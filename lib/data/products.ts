@@ -108,7 +108,6 @@ export const products: Product[] = [
     metaDescription:
       'Restore your spine\'s natural curve and eliminate lower back pain in minutes. Ergonomic lumbar support for office, gaming, and home use.',
     relatedProductIds: ['posture-corrector-strap', 'standing-desk-mat'],
-    trendScore: 82,
   },
   {
     id: 'weighted-calm-blanket',
@@ -146,7 +145,6 @@ export const products: Product[] = [
     validationStatus: 'pending',
     validationNotes: 'Verify supplier MOQ and shipping time before approving',
     relatedProductIds: ['sleep-eye-mask', 'white-noise-machine'],
-    trendScore: 91,
   },
   {
     id: 'furroll-pet-hair-remover',
@@ -178,7 +176,6 @@ export const products: Product[] = [
     validatedAt: '2026-04-02',
     validatedBy: 'manual-review',
     relatedProductIds: ['pet-couch-protector'],
-    trendScore: 76,
   },
 ]
 
