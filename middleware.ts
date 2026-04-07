@@ -37,7 +37,8 @@ export default clerkMiddleware(async (auth, req) => {
 
   // 2. Protect Account Routes with Clerk
   if (isProtectedRoute(req)) {
-    await auth.protect()
+    const clerkAuth = await auth()
+    clerkAuth.protect()
   }
 })
 
