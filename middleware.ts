@@ -9,7 +9,7 @@ const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 // Protected client routes can be added here
 const isProtectedRoute = createRouteMatcher(['/account(.*)'])
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   // 1. HTTP Basic Auth for Admin Panel
   if (isAdminRoute(req)) {
     const authHeader = req.headers.get('authorization')
@@ -37,7 +37,7 @@ export default clerkMiddleware((auth, req) => {
 
   // 2. Protect Account Routes with Clerk
   if (isProtectedRoute(req)) {
-    auth().protect()
+    await auth.protect()
   }
 })
 
