@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
+import { Show, SignInButton, UserButton } from '@clerk/nextjs'
 import { useTheme } from './ThemeProvider'
 
 const NAV_LINKS = [
@@ -71,9 +71,8 @@ export default function Navbar() {
               <span className="theme-toggle-thumb" />
             </button>
 
-            {/* Clerk Auth */}
             <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center' }}>
-              <SignedOut>
+              <Show when="signed-out">
                 <SignInButton mode="modal">
                   <button 
                     style={{ 
@@ -92,10 +91,10 @@ export default function Navbar() {
                     Login
                   </button>
                 </SignInButton>
-              </SignedOut>
-              <SignedIn>
+              </Show>
+              <Show when="signed-in">
                 <UserButton afterSignOutUrl="/" />
-              </SignedIn>
+              </Show>
             </div>
 
             {/* CTA */}
@@ -158,7 +157,7 @@ export default function Navbar() {
           ))}
         </nav>
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <SignedOut>
+          <Show when="signed-out">
             <SignInButton mode="modal">
               <button 
                 style={{ 
@@ -176,13 +175,13 @@ export default function Navbar() {
                 <span>👤</span> Login
               </button>
             </SignInButton>
-          </SignedOut>
-          <SignedIn>
+          </Show>
+          <Show when="signed-in">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', padding: 'var(--space-2)' }}>
               <UserButton afterSignOutUrl="/" />
               <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>My Account</span>
             </div>
-          </SignedIn>
+          </Show>
           <Link href="/solutions" className="btn btn-primary btn-lg" style={{ width: '100%' }}>
             Shop Now
           </Link>
