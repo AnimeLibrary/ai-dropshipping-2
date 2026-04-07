@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
 import { useTheme } from './ThemeProvider'
 
 const NAV_LINKS = [
@@ -70,15 +71,32 @@ export default function Navbar() {
               <span className="theme-toggle-thumb" />
             </button>
 
-            {/* Login Placeholder */}
-            <Link 
-              href="/login" 
-              className="hide-mobile"
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-primary)' }}
-            >
-              <span style={{ fontSize: '1.2rem' }}>👤</span>
-              Login
-            </Link>
+            {/* Clerk Auth */}
+            <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center' }}>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button 
+                    style={{ 
+                      background: 'transparent',
+                      border: 'none',
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: 'var(--space-2)', 
+                      fontSize: 'var(--text-sm)', 
+                      fontWeight: 600, 
+                      color: 'var(--color-text-primary)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <span style={{ fontSize: '1.2rem' }}>👤</span>
+                    Login
+                  </button>
+                </SignInButton>
+              </SignedOut>
+              <SignedIn>
+                <UserButton afterSignOutUrl="/" />
+              </SignedIn>
+            </div>
 
             {/* CTA */}
             <Link href="/solutions" className="btn btn-primary hide-mobile" id="nav-cta">
@@ -140,9 +158,31 @@ export default function Navbar() {
           ))}
         </nav>
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <Link href="/login" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
-            <span>👤</span> Login / Track Order
-          </Link>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button 
+                style={{ 
+                  background: 'transparent',
+                  border: 'none',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: 'var(--space-2)', 
+                  fontSize: 'var(--text-lg)', 
+                  fontWeight: 700, 
+                  color: 'var(--color-text-primary)' 
+                }}
+              >
+                <span>👤</span> Login
+              </button>
+            </SignInButton>
+          </SignedOut>
+          <SignedIn>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', padding: 'var(--space-2)' }}>
+              <UserButton afterSignOutUrl="/" />
+              <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>My Account</span>
+            </div>
+          </SignedIn>
           <Link href="/solutions" className="btn btn-primary btn-lg" style={{ width: '100%' }}>
             Shop Now
           </Link>

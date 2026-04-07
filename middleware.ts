@@ -1,43 +1,51 @@
-// ============================================================
-// MIDDLEWARE — Admin Route Protection
-// Uses HTTP Basic Auth via environment variables.
-// ADMIN_USER and ADMIN_PASS must be set in .env.local and Vercel dashboard.
-// The /admin path is invisible to the public — no link from the frontend.
-// ============================================================
-
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
+// ============================================================
+// MIDDLEWARE — Admin Route Protection & Clerk Auth
+// ============================================================
 
-  // Only protect admin routes
-  if (!pathname.startsWith('/admin')) {
-    return NextResponse.next()
-  }
+const isAdminRoute = createRouteMatcher(['/admin(.*)'])
+// Protected client routes can be added here
+const isProtectedRoute = createRouteMatcher(['/account(.*)'])
 
-  const authHeader = req.headers.get('authorization')
+export default clerkMiddleware((auth, req) => {
+  // 1. HTTP Basic Auth for Admin Panel
+  if (isAdminRoute(req)) {
+    const authHeader = req.headers.get('authorization')
 
-  if (authHeader) {
-    const base64 = authHeader.split(' ')[1] || ''
-    const [user, pass] = atob(base64).split(':')
+    if (authHeader) {
+      const base64 = authHeader.split(' ')[1] || ''
+      const [user, pass] = atob(base64).split(':')
 
-    if (
-      user === process.env.ADMIN_USER &&
-      pass === process.env.ADMIN_PASS
-    ) {
-      return NextResponse.next()
+      if (
+        user === process.env.ADMIN_USER &&
+        pass === process.env.ADMIN_PASS
+      ) {
+        return NextResponse.next()
+      }
     }
+
+    // Challenge — browser shows native login prompt
+    return new NextResponse('Admin access required.', {
+      status: 401,
+      headers: {
+        'WWW-Authenticate': 'Basic realm="TrendDrop Admin"',
+      },
+    })
   }
 
-  // Challenge — browser shows native login prompt
-  return new NextResponse('Admin access required.', {
-    status: 401,
-    headers: {
-      'WWW-Authenticate': 'Basic realm="TrendDrop Admin"',
-    },
-  })
-}
+  // 2. Protect Account Routes with Clerk
+  if (isProtectedRoute(req)) {
+    auth().protect()
+  }
+})
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
 }

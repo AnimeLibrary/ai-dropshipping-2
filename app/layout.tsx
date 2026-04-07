@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter, Outfit } from 'next/font/google'
+import { ClerkProvider } from '@clerk/nextjs'
 import '@/styles/globals.css'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
@@ -47,22 +48,24 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </head>
-      <body className={`${inter.variable} ${outfit.variable}`}>
-        <ThemeProvider>
-          <Analytics />
-          <Navbar />
-          <main id="main-content">
-            {children}
-          </main>
-          <StickyCTA />
-          <Footer />
-        </ThemeProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" suppressHydrationWarning>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" href="/favicon.ico" />
+        </head>
+        <body className={`${inter.variable} ${outfit.variable}`}>
+          <ThemeProvider>
+            <Analytics />
+            <Navbar />
+            <main id="main-content">
+              {children}
+            </main>
+            <StickyCTA />
+            <Footer />
+          </ThemeProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

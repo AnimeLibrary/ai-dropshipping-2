@@ -13,7 +13,8 @@
     "react": "^18",
     "react-dom": "^18",
     "stripe": "^15.0.0",
-    "@stripe/stripe-js": "^3.3.0"
+    "@stripe/stripe-js": "^3.3.0",
+    "@clerk/nextjs": "latest"
   },
   "devDependencies": {
     "@types/node": "^20",
