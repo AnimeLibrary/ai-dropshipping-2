@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import ProblemCategories from '@/components/home/ProblemCategories'
+import ProblemSearch from '@/components/home/ProblemSearch'
 
 export const metadata: Metadata = {
   title: 'Shop by Problem | TrendDrop',
@@ -47,38 +48,7 @@ export default function ProblemsPage() {
             Most stores group things by "electronics" or "home goods". We group them by the exact pain point they solve. What are you dealing with today?
           </p>
           
-          {/* Mock Search Bar */}
-          <div 
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: 'var(--color-bg)',
-              border: '2px solid var(--color-border)',
-              borderRadius: 'var(--radius-full)',
-              padding: 'var(--space-2) var(--space-2) var(--space-2) var(--space-6)',
-              maxWidth: 500,
-              margin: '0 auto',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)'
-            }}
-          >
-            <span style={{ fontSize: 20, marginRight: 'var(--space-3)' }}>🔍</span>
-            <input 
-              type="text" 
-              placeholder="E.g. back pain at work, can't sleep..." 
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--color-text-primary)',
-                fontSize: 'var(--text-base)',
-                width: '100%',
-                outline: 'none',
-              }}
-              disabled
-            />
-            <button className="btn btn-primary" style={{ borderRadius: 'var(--radius-full)' }}>
-              Search
-            </button>
-          </div>
+          <ProblemSearch />
         </div>
       </div>
 
