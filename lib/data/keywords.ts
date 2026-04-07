@@ -138,5 +138,5 @@ export function getRisingClusters(): KeywordCluster[] {
 // HELPER: Get all unique niches
 // ============================================================
 export function getAllNiches(): string[] {
-  return [...new Set(keywordClusters.map((c) => c.niche))]
+  return Array.from(new Set(keywordClusters.map((c) => c.niche)))
 }
