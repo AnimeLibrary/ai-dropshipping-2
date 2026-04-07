@@ -70,8 +70,18 @@ export default function Navbar() {
               <span className="theme-toggle-thumb" />
             </button>
 
+            {/* Login Placeholder */}
+            <Link 
+              href="/login" 
+              className="hide-mobile"
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text-primary)' }}
+            >
+              <span style={{ fontSize: '1.2rem' }}>👤</span>
+              Login
+            </Link>
+
             {/* CTA */}
-            <Link href="/collections" className="btn btn-primary hide-mobile" id="nav-cta">
+            <Link href="/solutions" className="btn btn-primary hide-mobile" id="nav-cta">
               Shop Now
             </Link>
 
@@ -129,8 +139,11 @@ export default function Navbar() {
             </Link>
           ))}
         </nav>
-        <div style={{ marginTop: 'auto' }}>
-          <Link href="/collections" className="btn btn-primary btn-lg" style={{ width: '100%' }}>
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <Link href="/login" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-2)', fontSize: 'var(--text-lg)', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+            <span>👤</span> Login / Track Order
+          </Link>
+          <Link href="/solutions" className="btn btn-primary btn-lg" style={{ width: '100%' }}>
             Shop Now
           </Link>
         </div>
