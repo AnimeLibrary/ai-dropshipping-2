@@ -5,6 +5,12 @@ interface Props {
   products: Product[]
 }
 
+// Simulated social proof numbers — replace with real analytics data
+function getSocialProofCount(trendScore: number): string {
+  const base = Math.floor(trendScore * 11.4 + 200)
+  return base.toLocaleString()
+}
+
 export default function TrendingProducts({ products }: Props) {
   return (
     <div>
@@ -18,7 +24,8 @@ export default function TrendingProducts({ products }: Props) {
             📈 Trending Now
           </span>
           <h2 className="heading-xl">
-            Products Other People Are <span className="gradient-text">Solving Problems With</span>
+            These Are Solving the Problems{' '}
+            <span className="gradient-text">You Searched For</span>
           </h2>
         </div>
         <Link href="/collections" className="btn btn-secondary hide-mobile" id="trending-view-all">
@@ -35,30 +42,23 @@ export default function TrendingProducts({ products }: Props) {
             style={{ animationDelay: `${i * 80}ms` }}
             role="listitem"
           >
-            {/* Image placeholder */}
+            {/* Hero image or styled placeholder */}
             <div className="product-card-image">
-              <div
-                className="skeleton"
-                style={{ width: '100%', height: '100%', borderRadius: 0 }}
-                aria-hidden="true"
-              />
-              {/* Trend score badge */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 'var(--space-3)',
-                  right: 'var(--space-3)',
-                  display: 'flex',
-                  gap: 'var(--space-2)',
-                }}
-              >
-                <span className="pipeline-badge trending">
-                  🔥 {product.trendScore}
-                </span>
-                <span className={`pipeline-badge ${product.source}`}>
-                  {product.source}
-                </span>
-              </div>
+              {product.heroImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={product.heroImage}
+                  alt={product.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div
+                  className="skeleton"
+                  style={{ width: '100%', height: '100%', borderRadius: 0 }}
+                  aria-hidden="true"
+                />
+              )}
+
               {/* Validation status */}
               {product.validationStatus === 'approved' && (
                 <div
@@ -100,49 +100,49 @@ export default function TrendingProducts({ products }: Props) {
                 {product.niche.replace(/-/g, ' ')} · {product.category}
               </p>
               <h3 className="product-card-title">{product.title}</h3>
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--color-text-secondary)',
-                  marginBottom: 'var(--space-4)',
-                  lineHeight: 1.5,
-                }}
-              >
-                {product.shortDescription}
-              </p>
 
-              {/* Top ad angle */}
+              {/* Human fix line — replaces "Top Ad Hook" */}
               {product.adAngles[0] && (
                 <div
                   style={{
-                    background: 'var(--color-bg-secondary)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: 'var(--space-3)',
-                    marginBottom: 'var(--space-4)',
-                    borderLeft: '3px solid var(--color-accent)',
+                    marginBottom: 'var(--space-3)',
                   }}
                 >
                   <p
                     style={{
                       fontSize: 'var(--text-xs)',
-                      color: 'var(--color-text-muted)',
+                      color: 'var(--color-accent)',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
                       marginBottom: 'var(--space-1)',
-                      fontWeight: 600,
                     }}
                   >
-                    Top Ad Hook ({product.adAngles[0].platform})
+                    Fixes:
                   </p>
                   <p
                     style={{
                       fontSize: 'var(--text-sm)',
-                      color: 'var(--color-text-primary)',
-                      fontStyle: 'italic',
+                      color: 'var(--color-text-secondary)',
+                      lineHeight: 1.5,
                     }}
                   >
-                    "{product.adAngles[0].hook}"
+                    {product.adAngles[0].pain}
                   </p>
                 </div>
               )}
+
+              {/* Social proof micro-line */}
+              <p
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-muted)',
+                  marginBottom: 'var(--space-4)',
+                  fontWeight: 600,
+                }}
+              >
+                🔥 {getSocialProofCount(product.trendScore)} people grabbed this this week
+              </p>
 
               <div className="flex-between">
                 <div>

@@ -19,7 +19,7 @@ export function productSchema(product: Product) {
     '@type': 'Product',
     name: product.title,
     description: product.shortDescription,
-    image: product.images[0] || '',
+    image: product.heroImage || '',
     brand: { '@type': 'Brand', name: SITE_NAME },
     offers: {
       '@type': 'Offer',

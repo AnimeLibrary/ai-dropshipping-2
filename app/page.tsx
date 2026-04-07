@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { getTrendingProducts } from '@/lib/data/products'
 import { getRisingClusters } from '@/lib/data/keywords'
 import HeroSection from '@/components/home/HeroSection'
+import PainBanner from '@/components/home/PainBanner'
 import TrendingProducts from '@/components/home/TrendingProducts'
 import ProblemCategories from '@/components/home/ProblemCategories'
 import SocialProof from '@/components/home/SocialProof'
@@ -22,6 +23,12 @@ export default function HomePage() {
   return (
     <>
       <HeroSection />
+
+      <section className="section-sm" id="trust-filter">
+        <div className="container">
+          <PainBanner />
+        </div>
+      </section>
 
       <section className="section" id="trending-products">
         <div className="container">

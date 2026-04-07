@@ -7,7 +7,9 @@
 // This is the manual validation layer against AI-picked products.
 // ============================================================
 
-export type ValidationStatus = 'pending' | 'approved' | 'rejected'
+// Status machine: pending → approved → queuedForPublish → live
+// 'approved' = reviewed internally. 'queuedForPublish' = batched, ready to go live.
+export type ValidationStatus = 'pending' | 'approved' | 'queuedForPublish' | 'rejected'
 export type ProductSource = 'kalodata' | 'minea' | 'pipiads' | 'zik' | 'manual'
 
 export interface AdAngle {
@@ -32,9 +34,16 @@ export interface Product {
   title: string
   shortDescription: string    // 1-2 sentence pain-solution framing
   longDescription: string     // Full problem → solution → product copy
+  // Pain narrative sections — power the product page emotional arc
+  painNarrative?: {
+    whyYoureHere: string      // Empathy hook — "You're not crazy..."
+    realCause: string         // Why nothing else worked
+    whyThisWorks: string      // The solution, not the pitch
+  }
   price: number
   compareAtPrice?: number
-  images: string[]            // CDN URLs (Shopify or uploaded)
+  heroImage: string           // AI-enhanced emotional shot (homepage hero + product page top)
+  galleryImages: string[]     // Real supplier images — proof layer (product page gallery)
   category: string
   niche: string
   tags: string[]
@@ -52,6 +61,8 @@ export interface Product {
   validationNotes?: string    // Reviewer notes
   validatedAt?: string        // ISO date when approved
   validatedBy?: string        // Who approved it
+  // The single emotional core that becomes headlines, hooks, and ad copy
+  emotionalTrigger?: string   // e.g. "fear of long-term damage", "exhaustion from lack of sleep"
 
   // SEO
   metaTitle?: string
@@ -76,9 +87,18 @@ export const products: Product[] = [
       'Engineered lumbar support that eliminates lower back pain during long sitting sessions — in under 10 minutes of use.',
     longDescription:
       "Your lower back wasn't designed for 8-hour sitting marathons. Most chairs provide zero lumbar support, forcing your spine into a C-shape that compresses discs and strains muscles. The LumbarPro sits at the exact curvature point your chair misses — restoring the natural S-curve of your spine, decompressing pressure points, and eliminating that burning ache within minutes. Whether you're gaming, working from home, or commuting, it moves with you.",
+    painNarrative: {
+      whyYoureHere:
+        "You've tried adjusting your chair. You've tried standing. You've tried stretching between meetings. And at the end of the day your lower back still aches — the kind of dull, persistent burn you've started accepting as normal. It isn't.",
+      realCause:
+        "Most chairs are engineered for aesthetics, not anatomy. Without lumbar support at the exact curve of your spine, your back muscles spend all day fighting to keep you upright — and they lose. Every hour, the compression compounds.",
+      whyThisWorks:
+        "The LumbarPro targets the L2-L5 vertebrae — the zone most chairs completely miss. The memory foam contours to your exact curvature, restoring your spine's natural S-shape and taking the load off your muscles in minutes. No adjustment needed. It just works.",
+    },
     price: 34.99,
     compareAtPrice: 59.99,
-    images: [],
+    heroImage: '/images/products/lumbar-pro-hero.jpg',
+    galleryImages: [], // Add real supplier images here
     category: 'Ergonomics',
     niche: 'back-pain',
     tags: ['lumbar', 'ergonomic', 'office', 'chair', 'posture'],
@@ -101,6 +121,7 @@ export const products: Product[] = [
       },
     ],
     keywordClusterIds: ['lumbar-support-comparison', 'wfh-neck-pain', 'back-pain-gaming'],
+    emotionalTrigger: 'fear of permanent back damage from years of poor posture',
     validationStatus: 'approved',
     validatedAt: '2026-04-01',
     validatedBy: 'manual-review',
@@ -117,9 +138,18 @@ export const products: Product[] = [
       'Deep-pressure therapy in a blanket — calms anxiety, stops racing thoughts, and gets you to sleep faster.',
     longDescription:
       "When anxiety spikes at night, your nervous system is stuck in fight-or-flight. Weighted blankets use deep-touch pressure stimulus — the same mechanism as a firm hug — to trigger your parasympathetic nervous system and drop cortisol levels. The WeightedCalm blanket is engineered at 12lbs of even pressure distribution, breathable cotton weave, and noiseless glass bead fill. Studies show users fall asleep 48% faster and wake up less often.",
+    painNarrative: {
+      whyYoureHere:
+        "It's late. You're exhausted — genuinely, bone-tired exhausted. But the moment you lie down your mind starts running. The same thoughts. The same low hum of worry. You've tried everything: melatonin, phone-free nights, sleep podcasts. You're still awake at 2am.",
+      realCause:
+        "Anxiety keeps your nervous system locked in fight-or-flight mode even when your body is still. Cortisol stays elevated, your heart rate stays slightly up, and your brain treats sleep as a threat instead of a relief. You can't think your way out of a nervous system response.",
+      whyThisWorks:
+        "Deep-touch pressure — the same signal as a firm hug — physically activates your parasympathetic nervous system. It's not a supplement or a trick. It's biology. The WeightedCalm blanket delivers 12lbs of even pressure that drops cortisol and lets your body actually surrender to sleep.",
+    },
     price: 79.99,
     compareAtPrice: 129.99,
-    images: [],
+    heroImage: '/images/products/weighted-calm-hero.jpg',
+    galleryImages: [], // Add real supplier images here
     category: 'Sleep',
     niche: 'sleep',
     tags: ['weighted blanket', 'anxiety', 'sleep', 'calm'],
@@ -142,6 +172,7 @@ export const products: Product[] = [
       },
     ],
     keywordClusterIds: ['sleep-quality'],
+    emotionalTrigger: 'exhaustion from years of broken, anxious sleep',
     validationStatus: 'pending',
     validationNotes: 'Verify supplier MOQ and shipping time before approving',
     relatedProductIds: ['sleep-eye-mask', 'white-noise-machine'],
@@ -154,9 +185,18 @@ export const products: Product[] = [
       'One swipe removes pet hair from any surface — self-cleaning base, no refills, no tape.',
     longDescription:
       "Pet hair is the invisible tax of dog ownership. It coats your couch, clothes, car seats — and lint rollers eat through tape rolls faster than you think. FurRoll uses electrostatic bristle technology to pick up hair on the forward stroke and eject it on the return. One swipe covers 6x the area of lint tape. No refills, no sticky residue, no embarrassment when guests arrive.",
+    painNarrative: {
+      whyYoureHere:
+        "Your couch has more of your dog on it than you do. Guests are coming over and you've already lint-rolled the cushions three times. The tape roll is half gone. You love your pet — you're just tired of the tax that comes with it.",
+      realCause:
+        "Standard lint rollers and tape strips only pick up surface hair and leave the embedded strands behind. Pet hair works itself into fabric weaves at an angle that adhesive can't reverse. You'd need to tape the entire couch to get it right — which is why you never feel like you're winning.",
+      whyThisWorks:
+        "FurRoll's electrostatic bristles pick up hair on the forward stroke and eject it into the self-cleaning base on the return — no tape, no refills, no residue. One swipe covers the width of an entire cushion. Guests arrive and you stop apologizing for the couch.",
+    },
     price: 24.99,
     compareAtPrice: 39.99,
-    images: [],
+    heroImage: '/images/products/furroll-hero.jpg',
+    galleryImages: [], // Add real supplier images here
     category: 'Pet Care',
     niche: 'pet-care',
     tags: ['pet hair', 'dog', 'cat', 'lint roller', 'couch'],
@@ -172,6 +212,7 @@ export const products: Product[] = [
       },
     ],
     keywordClusterIds: ['pet-hair-everywhere'],
+    emotionalTrigger: 'embarrassment from pet hair in front of guests',
     validationStatus: 'approved',
     validatedAt: '2026-04-02',
     validatedBy: 'manual-review',
@@ -191,6 +232,11 @@ export function getApprovedProducts(): Product[] {
 /** Products pending review — for admin dashboard */
 export function getPendingProducts(): Product[] {
   return products.filter((p) => p.validationStatus === 'pending')
+}
+
+/** Products approved but waiting to be batched and published */
+export function getQueuedForPublishProducts(): Product[] {
+  return products.filter((p) => p.validationStatus === 'queuedForPublish')
 }
 
 export function getProductBySlug(slug: string): Product | undefined {

@@ -11,9 +11,9 @@ export default function ProductCard({ product }: Props) {
     <article className="product-card" role="listitem">
       <Link href={`/products/${product.slug}`} tabIndex={-1} aria-hidden="true">
         <div className="product-card-image">
-          {product.images[0] ? (
+          {product.heroImage ? (
             <Image
-              src={product.images[0]}
+              src={product.heroImage}
               alt={product.title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

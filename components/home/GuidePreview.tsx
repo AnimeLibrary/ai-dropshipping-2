@@ -5,6 +5,19 @@ interface Props {
   clusters: KeywordCluster[]
 }
 
+// Converts raw keyword + painPoint into an emotional question.
+// Falls back to capitalizing keyword if no painPoint.
+function toEmotionalQuestion(cluster: KeywordCluster): string {
+  if (cluster.painPoint) {
+    // If it already ends with a question mark, return as-is
+    if (cluster.painPoint.endsWith('?')) return cluster.painPoint
+    // Otherwise frame it as a question
+    return `Why ${cluster.painPoint.toLowerCase().replace(/^why /i, '')}?`
+  }
+  // Fallback: capitalize the keyword as-is
+  return cluster.keyword.charAt(0).toUpperCase() + cluster.keyword.slice(1) + '?'
+}
+
 export default function GuidePreview({ clusters }: Props) {
   return (
     <div>
@@ -14,7 +27,7 @@ export default function GuidePreview({ clusters }: Props) {
             🚀 Rising Fast
           </span>
           <h2 className="heading-xl">
-            Guides That Actually <span className="gradient-text">Solve Things</span>
+            Questions People Are <span className="gradient-text">Finally Getting Answered</span>
           </h2>
         </div>
         <Link href="/guides" className="btn btn-secondary hide-mobile" id="guides-view-all">
@@ -41,6 +54,8 @@ export default function GuidePreview({ clusters }: Props) {
                   <span className="badge badge-accent">📈 Rising</span>
                 )}
               </div>
+
+              {/* Emotional question title — not raw keyword string */}
               <h3
                 style={{
                   fontFamily: 'var(--font-heading)',
@@ -51,8 +66,9 @@ export default function GuidePreview({ clusters }: Props) {
                   lineHeight: 1.3,
                 }}
               >
-                {cluster.keyword.charAt(0).toUpperCase() + cluster.keyword.slice(1)}
+                {toEmotionalQuestion(cluster)}
               </h3>
+
               <p
                 style={{
                   fontSize: 'var(--text-sm)',
@@ -61,8 +77,9 @@ export default function GuidePreview({ clusters }: Props) {
                   marginBottom: 'var(--space-5)',
                 }}
               >
-                {cluster.painPoint}
+                {cluster.painPoint || `A deep-dive into the data behind "${cluster.keyword}" — with product recommendations that actually fix it.`}
               </p>
+
               <div className="flex-between">
                 <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                   <span
@@ -93,6 +110,13 @@ export default function GuidePreview({ clusters }: Props) {
             </div>
           </Link>
         ))}
+      </div>
+
+      {/* Mobile view all */}
+      <div style={{ textAlign: 'center', marginTop: 'var(--space-6)' }} className="hide-desktop">
+        <Link href="/guides" className="btn btn-secondary" id="guides-view-all-mobile">
+          All Guides →
+        </Link>
       </div>
     </div>
   )

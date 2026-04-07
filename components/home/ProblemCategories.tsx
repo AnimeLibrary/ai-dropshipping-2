@@ -5,7 +5,8 @@ const PROBLEM_CATEGORIES = [
     id: 'back-pain',
     emoji: '🪑',
     title: 'Back & Posture Pain',
-    description: 'Sitting all day destroying your spine? These products fix the root cause.',
+    painLine: "You've adjusted your chair 50 times. It still hurts.",
+    hookLine: "Here's why — and what's actually fixing it.",
     href: '/problems/back-pain',
     count: 14,
     trending: true,
@@ -14,7 +15,8 @@ const PROBLEM_CATEGORIES = [
     id: 'sleep',
     emoji: '😴',
     title: 'Sleep Problems',
-    description: 'Anxiety, insomnia, restless nights — solutions that work with your biology.',
+    painLine: "It's 2am. You're exhausted but your brain won't stop.",
+    hookLine: "This is what your nervous system actually needs.",
     href: '/problems/sleep',
     count: 11,
     trending: true,
@@ -23,7 +25,8 @@ const PROBLEM_CATEGORIES = [
     id: 'home-office',
     emoji: '🖥️',
     title: 'Work From Home Setup',
-    description: 'Neck pain, eye strain, poor posture — the remote work problem stack.',
+    painLine: 'Daily headaches, neck strain, eye fatigue — it compounds.',
+    hookLine: "The remote work problem stack, solved in one place.",
     href: '/problems/home-office',
     count: 9,
     trending: false,
@@ -32,7 +35,8 @@ const PROBLEM_CATEGORIES = [
     id: 'pet-care',
     emoji: '🐾',
     title: 'Pet Owner Problems',
-    description: 'Hair everywhere, destructive boredom, accidents — real solutions for pet chaos.',
+    painLine: 'Hair everywhere. Guests coming over. Lint rolls half gone.',
+    hookLine: "One product stops the cycle. Here it is.",
     href: '/problems/pet-care',
     count: 8,
     trending: false,
@@ -41,7 +45,8 @@ const PROBLEM_CATEGORIES = [
     id: 'fitness',
     emoji: '💪',
     title: 'Fitness & Recovery',
-    description: 'Sore muscles, plateau, motivation drops — tools serious about results.',
+    painLine: "You're putting in the work but your body won't recover fast enough.",
+    hookLine: "Tools serious about results — not aesthetics.",
     href: '/problems/fitness',
     count: 16,
     trending: true,
@@ -50,7 +55,8 @@ const PROBLEM_CATEGORIES = [
     id: 'kitchen',
     emoji: '🍳',
     title: 'Kitchen Frustrations',
-    description: 'Mess, waste, slow prep — smart products that make cooking effortless.',
+    painLine: 'Prep takes too long. Cleanup takes longer. Every night.',
+    hookLine: "Smart products that make cooking effortless.",
     href: '/problems/kitchen',
     count: 12,
     trending: false,
@@ -72,7 +78,7 @@ export default function ProblemCategories() {
             margin: '0 auto',
           }}
         >
-          We don't organize by product type — we organize by the problem you're trying to solve.
+          We don't organize by product type. We organize by the problem you're actually dealing with.
         </p>
       </div>
 
@@ -98,22 +104,36 @@ export default function ProblemCategories() {
                   fontFamily: 'var(--font-heading)',
                   fontSize: 'var(--text-lg)',
                   fontWeight: 700,
-                  marginBottom: 'var(--space-2)',
+                  marginBottom: 'var(--space-3)',
                   color: 'var(--color-text-primary)',
                 }}
               >
                 {cat.title}
               </h3>
+
+              {/* 2-line pain acknowledgment */}
               <p
                 style={{
                   fontSize: 'var(--text-sm)',
                   color: 'var(--color-text-secondary)',
                   lineHeight: 1.6,
+                  marginBottom: 'var(--space-1)',
+                }}
+              >
+                {cat.painLine}
+              </p>
+              <p
+                style={{
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--color-accent)',
+                  fontWeight: 600,
+                  lineHeight: 1.6,
                   marginBottom: 'var(--space-4)',
                 }}
               >
-                {cat.description}
+                {cat.hookLine}
               </p>
+
               <div className="flex-between">
                 <span
                   style={{
@@ -122,7 +142,7 @@ export default function ProblemCategories() {
                     fontWeight: 600,
                   }}
                 >
-                  {cat.count} products →
+                  {cat.count} solutions →
                 </span>
               </div>
             </div>
