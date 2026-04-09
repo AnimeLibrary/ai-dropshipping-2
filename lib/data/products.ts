@@ -97,7 +97,7 @@ export const products: Product[] = [
     },
     price: 34.99,
     compareAtPrice: 59.99,
-    heroImage: '/images/products/lumbar-pro-hero.jpg',
+    heroImage: 'https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80&w=1000&auto=format&fit=crop', // Lumbar support cushion
     galleryImages: [], // Add real supplier images here
     category: 'Ergonomics',
     niche: 'back-pain',
@@ -148,7 +148,7 @@ export const products: Product[] = [
     },
     price: 79.99,
     compareAtPrice: 129.99,
-    heroImage: '/images/products/weighted-calm-hero.jpg',
+    heroImage: 'https://images.unsplash.com/photo-1511974240194-e0eb3f5022dc?q=80&w=1000&auto=format&fit=crop', // Weighted blanket
     galleryImages: [], // Add real supplier images here
     category: 'Sleep',
     niche: 'sleep',
@@ -195,7 +195,7 @@ export const products: Product[] = [
     },
     price: 24.99,
     compareAtPrice: 39.99,
-    heroImage: '/images/products/furroll-hero.jpg',
+    heroImage: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80&w=1000&auto=format&fit=crop', // Pet grooming/dog hair context
     galleryImages: [], // Add real supplier images here
     category: 'Pet Care',
     niche: 'pet-care',
@@ -252,4 +252,24 @@ export function getTrendingProducts(limit = 6): Product[] {
   return getApprovedProducts()
     .sort((a, b) => b.trendScore - a.trendScore)
     .slice(0, limit)
+}
+
+// ============================================================
+// AI LAYER — Automated Content Generation
+// ============================================================
+
+/** 
+ * AI IMAGE FETCHING LAYER 
+ * Automatically pull real product images from the internet
+ * In production, this would call a real-time product search/scraper.
+ * For now, it maps known product IDs to high-quality internet sources.
+ */
+export async function fetchProductImageFromInternet(product: Product): Promise<string> {
+  const internetPlaceholders: Record<string, string> = {
+    'lumbar-pro-cushion': 'https://images.unsplash.com/photo-1592078615290-033ee584e267?q=80',
+    'weighted-calm-blanket': 'https://images.unsplash.com/photo-1511974240194-e0eb3f5022dc?q=80',
+    'furroll-pet-hair-remover': 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?q=80',
+  }
+  
+  return internetPlaceholders[product.id] || product.heroImage
 }

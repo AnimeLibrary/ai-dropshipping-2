@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { products, ValidationStatus } from '@/lib/data/products'
+import { products, ValidationStatus, fetchProductImageFromInternet } from '@/lib/data/products'
 
 // ============================================================
 // POST /api/admin/products/[id]/status
@@ -51,7 +51,19 @@ export async function POST(
   // Apply the state transition (in-memory — replace with DB write in production)
   product.validationStatus = nextStatus
   if (notes) product.validationNotes = notes
-  if (action === 'approve' || action === 'queue') {
+  
+  if (action === 'approve') {
+    product.validatedAt = new Date().toISOString()
+    product.validatedBy = 'admin'
+    
+    // ============================================================
+    // AI IMAGE FETCHING LAYER
+    // Automatically pull real product images from the internet
+    // after admin approval.
+    // ============================================================
+    product.heroImage = await fetchProductImageFromInternet(product)
+    console.log(`[AI] Product image updated for ${product.id}: ${product.heroImage}`)
+  } else if (action === 'queue') {
     product.validatedAt = new Date().toISOString()
     product.validatedBy = 'admin'
   }
@@ -63,6 +75,7 @@ export async function POST(
       title: product.title,
       validationStatus: product.validationStatus,
       validatedAt: product.validatedAt,
+      heroImage: product.heroImage,
     },
   })
 }

@@ -93,7 +93,7 @@ export default function Navbar() {
                 </SignInButton>
               </SignedOut>
               <SignedIn>
-                <UserButton afterSignOutUrl="/" />
+                <UserButton />
               </SignedIn>
             </div>
 
@@ -178,7 +178,7 @@ export default function Navbar() {
           </SignedOut>
           <SignedIn>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', padding: 'var(--space-2)' }}>
-              <UserButton afterSignOutUrl="/" />
+              <UserButton />
               <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>My Account</span>
             </div>
           </SignedIn>
