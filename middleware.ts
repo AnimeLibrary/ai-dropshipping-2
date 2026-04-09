@@ -9,7 +9,7 @@ const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 // Protected client routes can be added here
 const isProtectedRoute = createRouteMatcher(['/account(.*)'])
 
-export default clerkMiddleware(async (auth, req) => {
+export default async function middleware(req: NextRequest) {
   try {
     // 1. HTTP Basic Auth for Admin Panel
     if (isAdminRoute(req)) {
@@ -39,18 +39,28 @@ export default clerkMiddleware(async (auth, req) => {
       })
     }
 
-    // 2. Protect Account Routes with Clerk
-    if (isProtectedRoute(req)) {
-      const authResult = await auth()
-      authResult.protect()
+    // 2. Clerk Protection Layer
+    const hasClerkKeys = !!process.env.CLERK_SECRET_KEY && !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    
+    if (hasClerkKeys) {
+      // Use Clerk middleware if keys are present
+      return (clerkMiddleware(async (auth, request) => {
+        if (isProtectedRoute(request)) {
+          const authResult = await auth()
+          authResult.protect()
+        }
+        return NextResponse.next()
+      }))(req, {} as any)
+    } else {
+      console.warn('[MIDDLEWARE] Clerk API keys are missing. Bypassing auth check.')
     }
+
+    return NextResponse.next()
   } catch (error) {
-    console.error('Middleware Error:', error)
-    // Fallback — allow the request to proceed but log the error
-    // This prevents a 500 error from taking down the whole site
+    console.error('[MIDDLEWARE] Fatal Error:', error)
     return NextResponse.next()
   }
-})
+}
 
 export const config = {
   matcher: [
