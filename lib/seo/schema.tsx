@@ -90,6 +90,40 @@ export function articleSchema(params: {
 }
 
 // ============================================================
+// VIDEO SCHEMA
+// ============================================================
+export function videoSchema(params: { name: string; description: string; uploadDate: string; thumbnailUrl: string; contentUrl: string }) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: params.name,
+    description: params.description,
+    uploadDate: params.uploadDate,
+    thumbnailUrl: params.thumbnailUrl,
+    contentUrl: params.contentUrl,
+  }
+}
+
+// ============================================================
+// PRODUCT COMPARISON SCHEMA
+// ============================================================
+export function productComparisonSchema(products: Product[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: products.map((product, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'Product',
+        name: product.title,
+        url: `${SITE_URL}/products/${product.slug}`,
+      },
+    })),
+  }
+}
+
+// ============================================================
 // BREADCRUMB SCHEMA
 // ============================================================
 export function breadcrumbSchema(crumbs: { name: string; href: string }[]) {

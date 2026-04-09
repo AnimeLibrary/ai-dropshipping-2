@@ -20,12 +20,19 @@ export interface AdAngle {
   performanceScore?: number  // From Minea/Pipiads (0-100)
 }
 
-export interface ProductBundle {
+// Refined Bundle Interface for Triple-Threat strategy
+export interface Bundle {
   id: string
-  name: string
-  productIds: string[]  // IDs of bundled products
-  savings: number       // $ saved vs buying individually
-  headline: string      // Bundle storytelling headline
+  slug: string
+  title: string
+  shortDescription: string
+  longDescription: string
+  productIds: string[]        // Must contain exactly 3 products for Triple Threat
+  price: number               // Discounted bundle price
+  compareAtPrice: number      // Sum of individual prices
+  heroImage: string           // Bundle hero image
+  niche: string
+  validationStatus: ValidationStatus
 }
 
 export interface Product {
@@ -54,7 +61,8 @@ export interface Product {
   adAngles: AdAngle[]         // Ad copy angles from Minea/Pipiads
   keywordClusterIds: string[] // Maps to KeywordCluster.id for page generation
   stripePriceId?: string   // Populated after Stripe sync
-  supplierUrl?: string        // AliExpress/CJ supplier URL
+  supplierPrice: number       // Base cost from supplier
+  suppliers: Supplier[]       // List of vetted suppliers
 
   // MANUAL VALIDATION LAYER — AI picks must go through this
   validationStatus: ValidationStatus
@@ -70,9 +78,24 @@ export interface Product {
   relatedProductIds: string[]
 
   // Performance (populated from analytics)
-  ctr?: number
-  conversionRate?: number
-  addToCartRate?: number
+  statusTrends?: {
+    ctr: number
+    conversion: number
+    profit: number
+  }
+  stockCount?: number
+  bundleIds?: string[]        // Link back to bundles containing this product
+}
+
+export interface Supplier {
+  id: string
+  name: string
+  url: string
+  price: number
+  rating: number
+  shippingDays: number
+  isReliable: boolean
+  isCheapest: boolean
 }
 
 // ============================================================
@@ -125,6 +148,12 @@ export const products: Product[] = [
     validationStatus: 'approved',
     validatedAt: '2026-04-01',
     validatedBy: 'manual-review',
+    supplierPrice: 11.50,
+    suppliers: [
+      { id: 'ali-1', name: 'AliExpress Direct', url: '#', price: 11.50, rating: 4.8, shippingDays: 12, isReliable: true, isCheapest: true },
+      { id: 'cj-1', name: 'CJ Dropshipping', url: '#', price: 13.20, rating: 4.9, shippingDays: 8, isReliable: true, isCheapest: false }
+    ],
+    statusTrends: { ctr: 3.2, conversion: 2.1, profit: 4200 },
     metaTitle: 'LumbarPro Support Cushion — Fix Back Pain Fast | TrendDrop',
     metaDescription:
       'Restore your spine\'s natural curve and eliminate lower back pain in minutes. Ergonomic lumbar support for office, gaming, and home use.',
@@ -176,6 +205,11 @@ export const products: Product[] = [
     validationStatus: 'pending',
     validationNotes: 'Verify supplier MOQ and shipping time before approving',
     relatedProductIds: ['sleep-eye-mask', 'white-noise-machine'],
+    supplierPrice: 22.00,
+    suppliers: [
+      { id: 'ali-2', name: 'AliExpress Direct', url: '#', price: 21.50, rating: 4.6, shippingDays: 14, isReliable: true, isCheapest: true }
+    ],
+    statusTrends: { ctr: 4.5, conversion: 1.8, profit: 5600 },
   },
   {
     id: 'furroll-pet-hair-remover',
@@ -217,6 +251,11 @@ export const products: Product[] = [
     validatedAt: '2026-04-02',
     validatedBy: 'manual-review',
     relatedProductIds: ['pet-couch-protector'],
+    supplierPrice: 6.80,
+    suppliers: [
+      { id: 'ali-3', name: 'AliExpress Direct', url: '#', price: 6.80, rating: 4.7, shippingDays: 10, isReliable: true, isCheapest: true }
+    ],
+    statusTrends: { ctr: 2.9, conversion: 3.4, profit: 3100 },
   },
 ]
 

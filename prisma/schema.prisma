@@ -1,0 +1,112 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  title             String
+  shortDescription  String?  @db.Text
+  longDescription   String?  @db.Text
+  category          String?
+  niche             String
+  price             Float
+  compareAtPrice    Float?
+  supplierPrice     Float
+  heroImage         String?
+  trendScore        Int      @default(0)
+  source            String?  // e.g., 'kalodata', 'minea'
+  
+  // Fulfillment & Stripe Mapping
+  stripeProductId   String?  @unique
+  stripePriceId     String?  @unique
+  validationStatus  String   @default("pending") // pending, approved, archived
+  
+  // Relations
+  suppliers         Supplier[]
+  bundles           Bundle[]     @relation("BundleProducts")
+  orderItems        OrderItem[]
+  priceHistory      PriceLog[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model Supplier {
+  id            String   @id @default(cuid())
+  productId     String
+  name          String
+  url           String
+  price         Float
+  shippingDays  Int      @default(14)
+  isReliable    Boolean  @default(false)
+  isCheapest    Boolean  @default(false)
+
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Bundle {
+  id                String   @id @default(cuid())
+  title             String
+  hook              String?
+  price             Float
+  compareAtPrice    Float
+  heroImage         String?
+  
+  // Relations
+  products          Product[] @relation("BundleProducts")
+  status            String    @default("approved")
+  createdAt         DateTime  @default(now())
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  stripeSessionId String   @unique
+  customerName    String
+  customerEmail   String
+  customerPhone   String?
+  totalAmount     Float
+  status          String   @default("processing") // processing, shipped, failed
+  trackingNumber  String?
+  fulfillmentLog  String?  @db.Text
+  
+  // Relations
+  items           OrderItem[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model OrderItem {
+  id            String   @id @default(cuid())
+  orderId       String
+  productId     String
+  quantity      Int      @default(1)
+  priceAtSale   Float
+  supplierUrl   String?  // The specific URL used for fulfillment
+
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product       Product  @relation(fields: [productId], references: [id])
+}
+
+model PriceLog {
+  id            String   @id @default(cuid())
+  productId     String
+  supplierPrice Float
+  retailPrice   Float
+  timestamp     DateTime @default(now())
+
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProcessedEvent {
+  id            String   @id @default(cuid())
+  eventId       String   @unique // Stripe Event ID
+  type          String
+  processedAt   DateTime @default(now())
+}
+

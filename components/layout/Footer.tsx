@@ -9,10 +9,16 @@ const FOOTER_LINKS = [
 ]
 
 const LEGAL_LINKS = [
-  { href: '/privacy', label: 'Privacy Policy' },
-  { href: '/terms', label: 'Terms of Service' },
-  { href: '/contact', label: 'Contact' },
-  { href: '/faq', label: 'FAQ' },
+  { href: '/legal/privacy', label: 'Privacy Policy' },
+  { href: '/legal/refund', label: 'Refund Policy' },
+  { href: '/legal/shipping', label: 'Shipping Policy' },
+  { href: '/legal/terms', label: 'Terms of Service' },
+]
+
+const DISCOVERY_LINKS = [
+  { href: '/guides', label: 'Problem Guides' },
+  { href: '/solutions', label: 'Solution Comparisons' },
+  { href: '/bundles', label: 'Triple-Threat Bundles' },
 ]
 
 export default function Footer() {
@@ -70,6 +76,31 @@ export default function Footer() {
             </p>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {FOOTER_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="footer-link">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Discovery Links */}
+          <div>
+            <p
+              style={{
+                fontSize: 'var(--text-xs)',
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'var(--color-text-muted)',
+                marginBottom: 'var(--space-4)',
+              }}
+            >
+              Discovery
+            </p>
+            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {DISCOVERY_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="footer-link">
                     {link.label}
