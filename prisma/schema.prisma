@@ -33,8 +33,30 @@ model Product {
   bundles           Bundle[]     @relation("BundleProducts")
   orderItems        OrderItem[]
   priceHistory      PriceLog[]
+  keywordClusters   KeywordCluster[] @relation("ProductToCluster") // New Relation
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+}
+
+model KeywordCluster {
+  id              String   @id @default(cuid())
+  keyword         String   @unique
+  searchVolume    Int
+  competition     String   // low, medium, high
+  intent          String   // informational, transactional, etc
+  trend           String   // rising, stable, declining
+  niche           String
+  relatedKeywords String[] // Array of strings (Postgres supported)
+  painPoint       String   @db.Text
+  solutionAngle   String   @db.Text
+  targetSlug      String   @unique
+  targetPageType  String   // guide, problem, solution
+  source          String   @default("manual")
+  
+  // Relations
+  products        Product[] @relation("ProductToCluster")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Supplier {
