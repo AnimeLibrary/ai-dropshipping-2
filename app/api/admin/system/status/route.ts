@@ -44,7 +44,7 @@ export async function GET() {
 }
 
 async function pingLMStudio() {
-  const endpoint = process.env.AI_API_ENDPOINT || 'http://127.0.0.1:1234'
+  const endpoint = process.env.AI_API_ENDPOINT || 'http://172.20.10.11:1234'
   const start = Date.now()
   try {
     const res = await fetch(`${endpoint}/v1/models`, {

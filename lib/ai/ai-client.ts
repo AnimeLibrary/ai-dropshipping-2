@@ -14,7 +14,7 @@ export class AIClient {
 
   constructor() {
     this.apiKey = process.env.AI_API_KEY || 'not-needed-local'
-    this.baseUrl = process.env.AI_API_ENDPOINT || 'http://172.20.10.12:1234/v1'
+    this.baseUrl = process.env.AI_API_ENDPOINT || 'http://127.0.0.1:1234'
   }
 
   /**
