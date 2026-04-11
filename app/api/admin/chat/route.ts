@@ -9,14 +9,10 @@ import { prisma } from '@/lib/db/prisma'
 // in an iterative loop until the task is complete.
 // ============================================================
 
-const getAiBaseUrl = () => {
+const AI_BASE_URL = (() => {
   const envUrl = process.env.AI_API_ENDPOINT || 'http://172.20.10.11:1234'
-  const cleanUrl = envUrl.replace(/\/$/, '')
-  // Strip any existing /v1 or /api/v1 suffix — we'll add it per-call
-  return cleanUrl.replace(/\/(api\/)?v1$/, '')
-}
-
-const AI_BASE_URL = getAiBaseUrl()
+  return envUrl.replace(/\/$/, '')
+})()
 const AI_MODEL = process.env.AI_MODEL_NAME || 'meta-llama-3.1-8b-instruct'
 
 const MAX_ITERATIONS = 8
@@ -98,7 +94,7 @@ export async function POST(req: NextRequest) {
     while (iterations < MAX_ITERATIONS) {
       iterations++
 
-      const llmRes = await fetch(`${AI_BASE_URL}/api/v1/chat`, {
+      const llmRes = await fetch(`${AI_BASE_URL}/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
