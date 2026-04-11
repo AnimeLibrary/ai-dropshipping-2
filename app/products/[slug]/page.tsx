@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
-import { SchemaMarkup, productSchema, breadcrumbSchema } from '@/lib/seo/schema'
+import { SchemaMarkup, productSchema, breadcrumbSchema, faqSchema } from '@/lib/seo/schema'
 import CheckoutButton from '@/components/commerce/CheckoutButton'
+import ReviewForm from '@/components/commerce/ReviewForm'
 
 interface Props {
   params: { slug: string }
@@ -224,6 +225,15 @@ export default async function ProductPage({ params }: Props) {
                   </div>
                 ))}
               </div>
+              </div>
+            </div>
+
+            {/* ── Submit a Review ── */}
+            <div style={{ marginTop: 'var(--space-16)', maxWidth: 600, margin: 'var(--space-16) auto 0' }}>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: 'var(--space-6)', textAlign: 'center' }}>
+                Leave a Review
+              </h3>
+              <ReviewForm productSlug={product.slug} />
             </div>
           </div>
         </section>
