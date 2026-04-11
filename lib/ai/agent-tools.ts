@@ -24,6 +24,37 @@ export const AGENT_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'add_product_manual',
+      description: 'Call this when a user pastes raw unstructured text or asks to add a specific product manually. Automatically triggers deep analysis after insertion.',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'Product title' },
+          supplierPrice: { type: 'number', description: 'Estimated supplier cost (defaults to 15 if unknown)' },
+          niche: { type: 'string', description: 'Product category or niche' },
+          source: { type: 'string', description: 'Source URL or platform if known' }
+        },
+        required: ['title', 'supplierPrice', 'niche']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'scrape_url',
+      description: 'Scrapes raw text content from a provided URL. Call this when the user pastes a product link so you can read the page and then use add_product_manual to save it.',
+      parameters: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'The absolute URL to scrape' }
+        },
+        required: ['url']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'analyze_product',
       description: 'Full deep analysis: margin, market saturation, supplier intel, ad angles, AI verdict. Stores report in DB and sends approval request to admin.',
       parameters: {
@@ -104,6 +135,8 @@ export async function executeTool(name: string, args: Record<string, any>): Prom
       case 'reject_product':        return await toolRejectProduct(args.product_id, args.reason)
       case 'list_pending_products': return await toolListPending()
       case 'get_store_metrics':     return await toolGetMetrics()
+      case 'scrape_url':            return await toolScrapeUrl(args.url)
+      case 'add_product_manual':    return await toolAddProductManual(args.title, args.supplierPrice, args.niche, args.source)
       default:
         return { success: false, error: `Unknown tool: ${name}` }
     }
@@ -123,6 +156,45 @@ async function logToDb(level: string, source: string, message: string, meta?: an
 }
 
 // ─── TOOL IMPLEMENTATIONS ────────────────────────────────────
+
+async function toolScrapeUrl(url: string): Promise<ToolResult> {
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } })
+    const html = await res.text()
+    // Native regex HTML stripping to extract readable text
+    const text = html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 4000) // Keep it small so local Llama 3.1 8B context window doesn't overflow!
+    
+    return { success: true, data: { scraped_text: text } }
+  } catch (err: any) {
+    return { success: false, error: `Failed to scrape URL: ${err.message}` }
+  }
+}
+
+async function toolAddProductManual(title: string, supplierPrice: number, niche: string, source?: string): Promise<ToolResult> {
+  try {
+    const product = await prisma.product.create({
+      data: {
+        title,
+        price: calculateTargetPrice(supplierPrice),
+        supplierPrice,
+        niche: niche || 'general',
+        source: source || 'manual_entry',
+        validationStatus: 'pending',
+        trendScore: 85 // optimistic default for manually targeted items
+      }
+    })
+    // Auto-trigger deep analysis now that it exists
+    return await toolAnalyzeProduct(product.id)
+  } catch (err: any) {
+    return { success: false, error: `Database error: ${err.message}` }
+  }
+}
 
 async function toolImportCSV(csvText: string, source: 'kalodata' | 'minea'): Promise<ToolResult> {
   const lines = csvText.trim().split('\n').filter(Boolean)
