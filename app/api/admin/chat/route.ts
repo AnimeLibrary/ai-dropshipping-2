@@ -99,7 +99,10 @@ export async function POST(req: NextRequest) {
 
       const llmRes = await fetch(`${AI_BASE_URL}/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.AI_API_KEY || ''}`
+        },
         body: JSON.stringify({
           model: AI_MODEL,
           messages: fullMessages,
