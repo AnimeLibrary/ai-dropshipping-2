@@ -85,9 +85,18 @@ export async function POST(req: NextRequest) {
       ...filteredMessages
     ]
 
-    // Log incoming user message
-    const lastUserMsg = messages.filter(m => m.role === 'user').at(-1)
+    // Log and intercept incoming user message for automatic scraping / parsing
+    const lastUserMsg = filteredMessages.filter(m => m.role === 'user').at(-1)
     if (lastUserMsg) {
+      // If it looks like a bare URL, automatically inject a strict command
+      if (lastUserMsg.content.trim().match(/^https?:\/\/[^\s]+$/)) {
+        lastUserMsg.content = `${lastUserMsg.content}\n\n[AUTO-SYSTEM]: The user just posted a raw link. You are strictly required to call the \`scrape_url\` tool immediately using this link. Do not ask for confirmation.`
+      } 
+      // If it looks like a large chunk of copy-pasted Kalodata/Minea text
+      else if (lastUserMsg.content.length > 80 && !lastUserMsg.content.toLowerCase().includes('what') && !lastUserMsg.content.toLowerCase().includes('how')) {
+        lastUserMsg.content = `${lastUserMsg.content}\n\n[AUTO-SYSTEM]: The user just pasted raw unformatted product intel. You are strictly required to extract the title and call the \`add_product_manual\` tool immediately. Do not ask for confirmation.`
+      }
+
       await prisma.systemLog.create({
         data: { level: 'info', source: 'agent:chat', message: `User: ${lastUserMsg.content.slice(0, 200)}` }
       })
