@@ -34,7 +34,7 @@ export const AGENT_TOOLS = [
           niche: { type: 'string', description: 'Product category or niche' },
           source: { type: 'string', description: 'Source URL or platform if known' }
         },
-        required: ['title', 'supplierPrice', 'niche']
+        required: ['title']
       }
     }
   },
@@ -176,13 +176,14 @@ async function toolScrapeUrl(url: string): Promise<ToolResult> {
   }
 }
 
-async function toolAddProductManual(title: string, supplierPrice: number, niche: string, source?: string): Promise<ToolResult> {
+async function toolAddProductManual(title: string, supplierPrice: number = 15.00, niche: string = 'general', source?: string): Promise<ToolResult> {
   try {
+    const safePrice = isNaN(Number(supplierPrice)) ? 15.00 : Number(supplierPrice)
     const product = await prisma.product.create({
       data: {
         title,
-        price: calculateTargetPrice(supplierPrice),
-        supplierPrice,
+        price: calculateTargetPrice(safePrice),
+        supplierPrice: safePrice,
         niche: niche || 'general',
         source: source || 'manual_entry',
         validationStatus: 'pending',
