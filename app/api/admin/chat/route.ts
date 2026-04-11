@@ -10,9 +10,10 @@ import { prisma } from '@/lib/db/prisma'
 // ============================================================
 
 const getAiBaseUrl = () => {
-  const envUrl = process.env.AI_API_ENDPOINT || 'http://127.0.0.1:1234'
+  const envUrl = process.env.AI_API_ENDPOINT || 'http://172.20.10.11:1234'
   const cleanUrl = envUrl.replace(/\/$/, '')
-  return cleanUrl.includes('/v1') ? cleanUrl : `${cleanUrl}/v1`
+  // Strip any existing /v1 or /api/v1 suffix — we'll add it per-call
+  return cleanUrl.replace(/\/(api\/)?v1$/, '')
 }
 
 const AI_BASE_URL = getAiBaseUrl()
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
     while (iterations < MAX_ITERATIONS) {
       iterations++
 
-      const llmRes = await fetch(`${AI_BASE_URL}/chat/completions`, {
+      const llmRes = await fetch(`${AI_BASE_URL}/api/v1/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
           tools: AGENT_TOOLS,
           tool_choice: 'auto',
           temperature: 0.3,
+          stream: false,
         }),
         signal: AbortSignal.timeout(60000)
       })
