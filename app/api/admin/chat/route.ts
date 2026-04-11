@@ -10,7 +10,7 @@ import { prisma } from '@/lib/db/prisma'
 // ============================================================
 
 const AI_BASE_URL = (() => {
-  const envUrl = process.env.AI_API_ENDPOINT || 'http://172.20.10.11:1234'
+  const envUrl = process.env.AI_API_ENDPOINT || 'http://127.0.0.1:1234'
   return envUrl.replace(/\/$/, '')
 })()
 const AI_MODEL = process.env.AI_MODEL_NAME || 'meta-llama-3.1-8b-instruct'
