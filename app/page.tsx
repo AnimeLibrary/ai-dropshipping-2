@@ -11,9 +11,9 @@ import FaqSection from '@/components/home/FaqSection'
 import GuidePreview from '@/components/home/GuidePreview'
 
 export const metadata: Metadata = {
-  title: 'TrendDrop — Products That Solve Real Problems',
+  title: 'Vexsen — Engineered for Everyday Life',
   description:
-    'Stop buying things that don\'t work. TrendDrop surfaces AI-validated trending products matched to real problems — so you get results, not clutter.',
+    'Vexsen curates and engineers premium solutions to elevate your daily routines. Functional design, uncompromising quality.',
 }
 
 export const dynamic = 'force-dynamic'
@@ -43,6 +43,19 @@ export default async function HomePage() {
   return (
     <>
       <HeroSection />
+      
+      {/* Brand Identity / Trust Block */}
+      <section className="section-sm" style={{ background: 'var(--color-bg-secondary)', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>
+        <div className="container" style={{ maxWidth: 600 }}>
+          <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-2xl)', fontWeight: 800, marginBottom: 'var(--space-3)', letterSpacing: '-0.02em', color: 'var(--color-text-primary)' }}>
+            Why Vexsen?
+          </h2>
+          <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+            We believe that everyday frustrations deserve permanent solutions. Vexsen engineers and curates products with uncompromising quality to elevate your daily routines.
+          </p>
+        </div>
+      </section>
+
       <section className="section-sm" id="trust-filter"><div className="container"><PainBanner /></div></section>
       <section className="section" id="trending-products"><div className="container"><TrendingProducts products={trendingProducts as any} /></div></section>
       <div className="divider" style={{ maxWidth: 'var(--max-width)', margin: '0 auto' }} />

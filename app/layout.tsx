@@ -23,16 +23,16 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://trenddrop.store'),
   title: {
-    default: 'TrendDrop — Discover Products That Actually Work',
-    template: '%s | TrendDrop',
+    default: 'Vexsen — Curated for Everyday Life',
+    template: '%s | Vexsen',
   },
   description:
-    'AI-powered product discovery. We find winning trending products, solve real problems, and deliver to your door. Multi-niche general store backed by data.',
-  keywords: ['trending products', 'dropshipping', 'product discovery', 'winning products'],
+    'Functional design. Uncompromising quality. Vexsen builds and curates solutions designed to elevate your everyday routines.',
+  keywords: ['premium products', 'vexsen', 'lifestyle solutions', 'quality goods'],
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    siteName: 'TrendDrop',
+    siteName: 'Vexsen',
   },
   twitter: { card: 'summary_large_image' },
   robots: {

@@ -10,29 +10,29 @@ import { trackEvent } from '@/components/layout/Analytics'
 const PAIN_HOOKS = [
   {
     niche: 'back-pain',
-    line1: 'Your lower back is quietly breaking down.',
-    line2: '8 hours a day. 5 days a week.',
-    line3: "Here's what's actually fixing it.",
-    sub: "You've adjusted your chair a hundred times. It still hurts. That's not a willpower problem — it's a design problem. We found what fixes the root cause.",
-    cta: 'Fix Back Pain →',
+    line1: 'Designed for alignment.',
+    line2: 'Engineered for relief.',
+    line3: 'Experience a new standard.',
+    sub: 'You\'ve adjusted your chair a hundred times. We built a solution that focuses on anatomical alignment instead of temporary fixes. Functional design, uncompromising quality.',
+    cta: 'Discover Back Support →',
     href: '/problems/back-pain',
   },
   {
     niche: 'sleep',
-    line1: "It's 2am. You're exhausted but can't sleep.",
-    line2: 'Your nervous system is stuck in overdrive.',
-    line3: "Here's what actually calms it.",
-    sub: "Melatonin. Phone-free nights. Blue light glasses. You've tried everything. The problem isn't your habits — it's your nervous system. There's a biological fix.",
-    cta: 'Fix Sleep Problems →',
+    line1: 'Reclaim your rest.',
+    line2: 'Optimize your recovery.',
+    line3: 'Wake up renewed.',
+    sub: 'True rest requires more than just closing your eyes. It requires an environment optimized for deep sleep. We engineered the perfect biological reset.',
+    cta: 'Discover Sleep Solutions →',
     href: '/problems/sleep',
   },
   {
     niche: 'pet-care',
-    line1: 'Pet hair is on everything you own.',
-    line2: "Lint rollers are eating your money.",
-    line3: "Here's what actually works.",
-    sub: "You love your pet. You hate the tax. Three lint rolls to get one cushion clean — and it's back tomorrow. One product changed this for thousands of pet owners.",
-    cta: 'Fix Pet Hair →',
+    line1: 'A cleaner home.',
+    line2: 'Effortless maintenance.',
+    line3: 'Elevate your routine.',
+    sub: 'Living with pets shouldn\'t mean compromising on cleanliness. We provide premium tools designed to seamlessly integrate into your daily life and keep your home immaculate.',
+    cta: 'Discover Pet Care →',
     href: '/problems/pet-care',
   },
 ]
@@ -185,32 +185,20 @@ export default function HeroSection() {
               alignItems: 'center',
             }}
           >
-            {TRUST_STATS.map((stat) => (
-              <div key={stat.label}>
-                <p
-                  style={{
-                    fontFamily: 'var(--font-heading)',
-                    fontSize: 'var(--text-xl)',
-                    fontWeight: 800,
-                    color: 'var(--color-text-primary)',
-                  }}
-                >
-                  {stat.value}
-                </p>
-                <p
-                  style={{
-                    fontSize: 'var(--text-xs)',
-                    color: 'var(--color-text-muted)',
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase',
-                    fontWeight: 600,
-                    maxWidth: 140,
-                  }}
-                >
-                  {stat.label}
-                </p>
-              </div>
-            ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.25rem' }}>🔒</span>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Secure Checkout</p>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.25rem' }}>📦</span>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Ships in 24-72 hrs</p>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.25rem' }}>↻</span>
+              <p style={{ fontFamily: 'var(--font-heading)', fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>Easy 30-Day Returns</p>
+            </div>
           </div>
 
         </div>

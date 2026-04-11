@@ -39,9 +39,14 @@ export default function Navbar() {
       >
         <div className="container flex-between" style={{ width: '100%' }}>
           {/* Logo */}
-          <Link href="/" className="nav-logo" aria-label="TrendDrop home">
-            Trend<span>Drop</span>
-          </Link>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
+            <Link href="/" className="nav-logo" aria-label="Vexsen home" style={{ fontSize: '1.5rem', letterSpacing: '-0.03em' }}>
+              Vexsen
+            </Link>
+            <span className="hide-mobile" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+              Engineered for everyday
+            </span>
+          </div>
 
           {/* Desktop Links */}
           <ul className="nav-links hide-mobile" role="list">
@@ -126,7 +131,7 @@ export default function Navbar() {
         aria-label="Mobile navigation"
       >
         <div className="flex-between" style={{ marginBottom: 'var(--space-10)' }}>
-          <Link href="/" className="nav-logo">Trend<span>Drop</span></Link>
+          <Link href="/" className="nav-logo">Vexsen</Link>
           <button
             id="mobile-close-btn"
             onClick={() => setMobileOpen(false)}

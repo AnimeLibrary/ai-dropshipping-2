@@ -8,11 +8,12 @@ const FOOTER_LINKS = [
   { href: '/solutions', label: 'Solutions' },
 ]
 
-const LEGAL_LINKS = [
-  { href: '/legal/privacy', label: 'Privacy Policy' },
-  { href: '/legal/refund', label: 'Refund Policy' },
+const SUPPORT_LINKS = [
+  { href: '/about', label: 'About Us' },
   { href: '/legal/shipping', label: 'Shipping Policy' },
-  { href: '/legal/terms', label: 'Terms of Service' },
+  { href: '/legal/refund', label: 'Returns & Refunds' },
+  { href: '/legal/privacy', label: 'Privacy Policy' },
+  { href: '/contact', label: 'Contact' },
 ]
 
 const DISCOVERY_LINKS = [
@@ -46,7 +47,7 @@ export default function Footer() {
                 marginBottom: 'var(--space-3)',
               }}
             >
-              Trend<span style={{ color: 'var(--color-accent)' }}>Drop</span>
+              Vexsen
             </p>
             <p
               style={{
@@ -56,7 +57,7 @@ export default function Footer() {
                 maxWidth: 240,
               }}
             >
-              AI-powered product discovery. Real problems, real solutions, trending products curated by data.
+              Functional design. Uncompromising quality. We build solutions designed to elevate your everyday.
             </p>
           </div>
 
@@ -110,7 +111,7 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Legal Links */}
+          {/* Support Links */}
           <div>
             <p
               style={{
@@ -122,10 +123,10 @@ export default function Footer() {
                 marginBottom: 'var(--space-4)',
               }}
             >
-              Legal
+              Support
             </p>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              {LEGAL_LINKS.map((link) => (
+              {SUPPORT_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link href={link.href} className="footer-link">
                     {link.label}
@@ -140,10 +141,10 @@ export default function Footer() {
 
         <div className="flex-between" style={{ flexWrap: 'wrap', gap: 'var(--space-3)' }}>
           <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-            © {year} TrendDrop. All rights reserved.
+            © {year} Vexsen. All rights reserved.
           </p>
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>
-            Powered by AI · Data from Kalodata & Minea · Hosted on Vercel
+          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+            Secure Checkout · Guaranteed Quality
           </p>
         </div>
       </div>
