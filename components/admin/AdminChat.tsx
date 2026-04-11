@@ -64,7 +64,7 @@ export default function AdminChat({ isOpen, onClose, selectedProduct }: AdminCha
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: `## 🤖 TrendDrop AI Agent — Online\n\nI have full authority over your store database. Here is what I can do:\n\n- **Import CSV data** — Paste Kalodata or Minea CSV exports directly here\n- **Deep analyze products** — Market saturation, margin, supplier intel, ad angles\n- **Approve / Reject** — I'll make a recommendation and await your final call\n- **Live metrics** — Ask me "what's my store status?" anytime\n\nReady. Paste your data or give me a command.`
+      content: `## 🤖 Vexsen AI Agent — Online\n\nI have full authority over your store database. Here is what I can do:\n\n- **Import CSV data** — Paste Kalodata or Minea CSV exports directly here\n- **Deep analyze products** — Market saturation, margin, supplier intel, ad angles\n- **Approve / Reject** — I'll make a recommendation and await your final call\n- **Live metrics** — Ask me "what's my store status?" anytime\n\nReady. Paste your data or give me a command.`
     }
   ])
   const [input, setInput] = useState('')
@@ -114,7 +114,7 @@ export default function AdminChat({ isOpen, onClose, selectedProduct }: AdminCha
     } catch (err: any) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `⚠️ **Agent Error**: ${err.message}\n\nEnsure LM Studio is running at \`http://172.20.10.12:1234\` with the Llama 3.1 8B model loaded.`
+        content: `⚠️ **Agent Error**: ${err.message}\n\nEnsure LM Studio is running at \`http://127.0.0.1:1234\` with the Llama 3.1 8B model loaded.`
       }])
     } finally {
       setLoading(false)
@@ -147,7 +147,7 @@ export default function AdminChat({ isOpen, onClose, selectedProduct }: AdminCha
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s infinite' }} />
-            <h2 style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>TrendDrop AI Agent</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9', margin: 0 }}>Vexsen AI Agent</h2>
           </div>
           <p style={{ fontSize: 10, color: '#7c3aed', margin: '2px 0 0', fontWeight: 700, letterSpacing: '0.05em' }}>
             LLAMA 3.1 8B · LOCAL · FULL AUTHORITY MODE

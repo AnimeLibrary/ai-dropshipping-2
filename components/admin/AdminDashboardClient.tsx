@@ -143,7 +143,7 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
       {/* ── Sidebar ── */}
       <div style={{ width:220, background:'#0f0f17', borderRight:'1px solid #1e1e2e', display:'flex', flexDirection:'column', flexShrink:0 }}>
         <div style={{ padding:'20px 16px 12px', borderBottom:'1px solid #1e1e2e' }}>
-          <div style={{ fontWeight:900, fontSize:15, color:'#a78bfa' }}>⚡ TrendDrop</div>
+          <div style={{ fontWeight:900, fontSize:15, color:'#a78bfa' }}>⚡ Vexsen</div>
           <div style={{ fontSize:10, color:'#4a4a6a', marginTop:2 }}>COMMAND CENTER</div>
         </div>
 
