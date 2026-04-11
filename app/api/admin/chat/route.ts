@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
     while (iterations < MAX_ITERATIONS) {
       iterations++
 
-      const llmRes = await fetch(`${AI_BASE_URL}/api/v1/chat`, {
+      const llmRes = await fetch(`${AI_BASE_URL}/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
