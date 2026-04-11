@@ -7,38 +7,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const isAdminRoute = createRouteMatcher(['/admin(.*)'])
 // Protected client routes can be added here
-const isProtectedRoute = createRouteMatcher(['/account(.*)'])
+const isProtectedRoute = createRouteMatcher(['/account(.*)', '/admin(.*)'])
 
 export default async function middleware(req: NextRequest) {
   try {
-    // 1. HTTP Basic Auth for Admin Panel
-    if (isAdminRoute(req)) {
-      const authHeader = req.headers.get('authorization')
-
-      if (authHeader && authHeader.startsWith('Basic ')) {
-        const base64 = authHeader.split(' ')[1]
-        if (base64) {
-          const decoded = atob(base64)
-          const [user, pass] = decoded.split(':')
-
-          if (
-            user === process.env.ADMIN_USER &&
-            pass === process.env.ADMIN_PASS
-          ) {
-            return NextResponse.next()
-          }
-        }
-      }
-
-      // Challenge — browser shows native login prompt
-      return new NextResponse('Admin access required.', {
-        status: 401,
-        headers: {
-          'WWW-Authenticate': 'Basic realm="TrendDrop Admin"',
-        },
-      })
-    }
-
     // 2. Clerk Protection Layer
     const hasClerkKeys = !!process.env.CLERK_SECRET_KEY && !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
     
