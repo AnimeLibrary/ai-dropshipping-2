@@ -1,7 +1,11 @@
 /**
  * EMAIL ALERT SERVICE
- * Uses Resend (Free Tier) to notify the admin of urgent dropshipping events.
+ * Sends real transactional emails via Resend API.
+ * Without RESEND_API_KEY: writes to SystemLog in DB so alerts
+ * are never silently dropped — they surface in the admin dashboard.
  */
+
+import { prisma } from '@/lib/db/prisma'
 
 export interface RefundAlert {
   orderId: string
@@ -12,43 +16,65 @@ export interface RefundAlert {
 
 export class EmailService {
   private apiKey = process.env.RESEND_API_KEY
-  private adminEmail = 'brannenguidry28@gmail.com'
+  private adminEmail = process.env.ADMIN_EMAIL || 'brannenguidry28@gmail.com'
+  private fromEmail = process.env.FROM_EMAIL || 'alerts@trenddrop.store'
 
-  /**
-   * Sends an urgent alert when an item is bought but found out-of-stock.
-   */
   async sendRefundAlert(details: RefundAlert) {
-    console.log(`[Email] Sending OOS alert for Order ${details.orderId} to ${this.adminEmail}`)
-    
-    // Fallback: If no API key, log the email body to the console for the user to see
-    const emailBody = `
-      ⚠️ ACTION REQUIRED: Out-of-Stock Refund Needed
-      
-      Order: ${details.orderId}
-      Customer: ${details.customerName}
-      Product: ${details.productTitle}
-      Issue: ${details.reason}
-      
-      NOTICE: The customer has already paid. Fulfillment has BEEN STOPPED.
-      Please sign into your Admin Command Center to review the details and APPROVE THE REFUND.
-      
-      No automatic refund has been processed. 
+    const subject = `⚠️ Action Required: Refund Needed — ${details.orderId}`
+    const html = `
+      <h2 style="color:#ef4444">⚠️ Out-of-Stock: Refund Required</h2>
+      <table>
+        <tr><td><strong>Order ID</strong></td><td>${details.orderId}</td></tr>
+        <tr><td><strong>Customer</strong></td><td>${details.customerName}</td></tr>
+        <tr><td><strong>Product</strong></td><td>${details.productTitle}</td></tr>
+        <tr><td><strong>Reason</strong></td><td>${details.reason}</td></tr>
+      </table>
+      <p style="color:#ef4444"><strong>Fulfillment has been STOPPED. No charges have been retried. Log into your admin dashboard to confirm the refund.</strong></p>
     `
 
     if (!this.apiKey) {
-      console.log('--- SIMULATED EMAIL START ---')
-      console.log(emailBody)
-      console.log('--- SIMULATED EMAIL END ---')
-      return { sent: true, simulated: true }
+      // Write to DB log so it surfaces in admin — never silently lost
+      console.warn('[EmailService] RESEND_API_KEY missing. Writing alert to SystemLog.')
+      try {
+        await prisma.systemLog.create({
+          data: {
+            level: 'error',
+            source: 'email-service',
+            message: `UNSENT REFUND ALERT — ${subject}`,
+            meta: JSON.stringify(details)
+          }
+        })
+      } catch (dbErr: any) {
+        console.error('[EmailService] Failed to write to SystemLog:', dbErr.message)
+      }
+      return { sent: false, reason: 'No RESEND_API_KEY — logged to DB' }
     }
 
     try {
-      // In production:
-      // await fetch('https://api.resend.com/emails', { ... })
-      return { sent: true }
-    } catch (e) {
-      console.error('[Email Service] Failed to send alert:', e)
-      return { sent: false }
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: this.fromEmail,
+          to: this.adminEmail,
+          subject,
+          html
+        }),
+        signal: AbortSignal.timeout(10000)
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(`Resend rejected: ${JSON.stringify(err)}`)
+      }
+
+      return { sent: true, source: 'resend' }
+    } catch (e: any) {
+      console.error('[EmailService] Send failed:', e.message)
+      return { sent: false, reason: e.message }
     }
   }
 }

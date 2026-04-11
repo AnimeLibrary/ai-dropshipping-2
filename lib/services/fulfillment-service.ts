@@ -1,18 +1,25 @@
-import { Product, Supplier } from '../data/products'
-import { StockService } from './stock-service'
+import { prisma } from '../db/prisma'
+import { cj } from './cj-service'
 import { EmailService } from './email-service'
 
 /**
- * AUTODS FULFILLMENT SERVICE
- * Handles communication with the AutoDS API to place automated orders.
+ * FULFILLMENT DISPATCH SERVICE
+ * 
+ * Routing logic:
+ *   - source = 'kalodata' → MANUAL (you place it yourself in CJ dashboard)
+ *   - everything else    → AUTOMATIC via CJ Dropshipping API
+ * 
+ * CJ Dropshipping is free — just fund your CJ account balance to cover orders.
  */
 
 export interface FulfillmentOrder {
   orderId: string
+  productSource: string
+  cjVariantId?: string       // CJ product variant ID (stored on product at import time)
   customer: {
     name: string
     email: string
-    phone: string
+    phone?: string
     address: {
       line1: string
       city: string
@@ -23,79 +30,106 @@ export interface FulfillmentOrder {
   }
   items: Array<{
     productId: string
-    supplierUrl: string
+    supplierUrl?: string | null
+    cjVariantId?: string | null
     quantity: number
+    price: number
   }>
 }
 
 export class FulfillmentService {
-  private apiKey = process.env.AUTODS_API_KEY
+  private email = new EmailService()
 
-  /**
-   * Pushes an order to AutoDS.
-   * If it's a bundle, this will be called for each item or once for the linked bundle SKU.
-   */
-  async pushOrderToAutoDS(order: FulfillmentOrder) {
-    console.log(`[Fulfillment] Pushing order ${order.orderId} to AutoDS...`)
-    
-    const stock = new StockService()
-    const email = new EmailService()
+  async dispatch(order: FulfillmentOrder) {
+    const source = (order.productSource || '').toLowerCase()
 
-    // 1. FINAL STOCK CHECK (Broke Dropshipper Safety Valve)
-    for (const item of order.items) {
-      const stockResult = await stock.checkStock(item.supplierUrl)
-      if (stockResult.count <= 0) {
-        console.error(`[Fulfillment] CRITICAL: Product ${item.productId} is OUT OF STOCK. Stopping order.`)
-        
-        // Trigger Email Alert
-        await email.sendRefundAlert({
-          orderId: order.orderId,
-          customerName: order.customer.name,
-          productTitle: item.productId,
-          reason: 'Item went out of stock between purchase and fulfillment.'
-        })
-
-        return { status: 'FLAGGED_FOR_REFUND', reason: 'Stock exhausted' }
-      }
+    // ── Kalodata → flag for manual placement ─────────────────────────────────
+    if (source === 'kalodata') {
+      return this.flagForManualFulfillment(order)
     }
 
-    if (!this.apiKey) {
-      console.warn('[Fulfillment] No AutoDS API key found. Order queued locally.')
-      return { status: 'queued', reason: 'Api key missing' }
+    // ── CJ Dropshipping not configured → queue to dashboard ──────────────────
+    if (!cj.isConfigured()) {
+      await this.logToDb('warn', order.orderId, 'CJ_API not configured — add CJ_EMAIL and CJ_API_KEY to .env')
+      return { status: 'queued', reason: 'CJ API not configured' }
     }
 
+    // ── All other sources → auto-fulfill via CJ ───────────────────────────────
+    return this.fulfillViaCJ(order)
+  }
+
+  private async fulfillViaCJ(order: FulfillmentOrder) {
     try {
-      // In production, this would be a real call to:
-      // https://api.autods.com/v1/orders
-      const response = await fetch('https://api.autods.com/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
+      // Build CJ product list from order items
+      const cjProducts = order.items
+        .filter(item => item.cjVariantId)
+        .map(item => ({
+          vid: item.cjVariantId!,
+          quantity: item.quantity,
+          price: item.price
+        }))
+
+      if (cjProducts.length === 0) {
+        // No CJ variant IDs yet — fall back to dashboard link
+        await this.logToDb('warn', order.orderId, 'No CJ variant IDs found on order items — route to manual dashboard')
+        return { status: 'manual_required', reason: 'No CJ variant IDs. Add CJ products via the Admin chat.' }
+      }
+
+      const result = await cj.createOrder({
+        orderId: order.orderId,
+        customerName: order.customer.name,
+        customerPhone: order.customer.phone || '',
+        address: {
+          line1: order.customer.address.line1,
+          city: order.customer.address.city,
+          province: order.customer.address.state,
+          country: order.customer.address.country,
+          zip: order.customer.address.postalCode
         },
-        body: JSON.stringify(this.mapOrderToAutoDS(order))
+        products: cjProducts
       })
 
-      if (!response.ok) throw new Error('AutoDS API rejected the order')
+      // Update order in DB with CJ order reference
+      await prisma.order.update({
+        where: { id: order.orderId },
+        data: {
+          status: 'processing',
+          fulfillmentLog: `CJ Order created: ${result.cjOrderId} (${result.orderNum})`
+        }
+      })
 
-      return { status: 'success', trackingId: null }
-    } catch (error) {
-      console.error('[Fulfillment] AutoDS Push failed:', error)
-      return { status: 'failed', error }
+      await this.logToDb('info', order.orderId, `✅ Auto-fulfilled via CJ Dropshipping. CJ Order ID: ${result.cjOrderId}`)
+
+      return { status: 'success', cjOrderId: result.cjOrderId }
+
+    } catch (err: any) {
+      await this.logToDb('error', order.orderId, `CJ fulfillment failed: ${err.message}`)
+      return { status: 'failed', error: err.message }
     }
   }
 
-  private mapOrderToAutoDS(order: FulfillmentOrder) {
-    // Mapping our internal Stripe-pushed order to AutoDS expected schema
-    return {
-      external_id: order.orderId,
-      shipping_address: order.customer.address,
-      recipient_name: order.customer.name,
-      recipient_phone: order.customer.phone,
-      products: order.items.map(item => ({
-        url: item.supplierUrl,
-        quantity: item.quantity
-      }))
-    }
+  private async flagForManualFulfillment(order: FulfillmentOrder) {
+    await this.logToDb(
+      'warn',
+      order.orderId,
+      `⚠️ MANUAL ORDER REQUIRED — Kalodata product. Place in your CJ dashboard manually.\n` +
+      `Customer: ${order.customer.name} (${order.customer.email})\n` +
+      `Items: ${order.items.map(i => `${i.productId} x${i.quantity}`).join(', ')}`
+    )
+
+    await this.email.sendRefundAlert({
+      orderId: order.orderId,
+      customerName: order.customer.name,
+      productTitle: 'Kalodata Product',
+      reason: 'Manual order placement required. Check your Admin Dashboard → Logs.'
+    })
+
+    return { status: 'manual_required', reason: 'Kalodata product — place in CJ dashboard' }
+  }
+
+  private async logToDb(level: 'info' | 'warn' | 'error', orderId: string, message: string) {
+    await prisma.systemLog.create({
+      data: { level, source: 'fulfillment', message: `[Order #${orderId}] ${message}` }
+    })
   }
 }

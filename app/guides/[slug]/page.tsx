@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { keywordClusters } from '@/lib/data/keywords'
+import prisma from '@/lib/prisma'
 import { generateGuideContent } from '@/lib/content/generator'
 import { faqSchema, articleSchema, breadcrumbSchema, SchemaMarkup } from '@/lib/seo/schema'
-import { getApprovedProducts } from '@/lib/data/products'
 import ProductCard from '@/components/commerce/ProductCard'
+import StickyCTA from '@/components/commerce/StickyCTA'
+import BundleShowcase from '@/components/commerce/BundleShowcase'
 
 interface Props {
   params: { slug: string }
@@ -13,32 +14,53 @@ interface Props {
 
 // Generate all guide pages at build time
 export async function generateStaticParams() {
-  return keywordClusters
-    .filter((c) => c.targetPageType === 'guide')
-    .map((c) => ({ slug: c.targetSlug }))
+  const clusters = await prisma.keywordCluster.findMany({
+    where: { targetPageType: 'guide' },
+    select: { targetSlug: true }
+  })
+  return clusters.map((c: any) => ({ slug: c.targetSlug }))
 }
 
 // Dynamic metadata per guide
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const cluster = keywordClusters.find((c) => c.targetSlug === params.slug)
+  const cluster = await prisma.keywordCluster.findUnique({
+    where: { targetSlug: params.slug }
+  })
+
   if (!cluster) return {}
-  const content = generateGuideContent(cluster)
+  const content = generateGuideContent(cluster as any)
   return {
     title: content.metaTitle,
     description: content.metaDescription,
   }
 }
 
-export default function GuidePage({ params }: Props) {
-  const cluster = keywordClusters.find(
-    (c) => c.targetSlug === params.slug && c.targetPageType === 'guide'
-  )
+export default async function GuidePage({ params }: Props) {
+  const cluster = await prisma.keywordCluster.findUnique({
+    where: { 
+      targetSlug: params.slug,
+      targetPageType: 'guide'
+    },
+    include: {
+      products: {
+        where: { validationStatus: 'approved' },
+        include: {
+          bundles: {
+            where: { status: 'approved' },
+            include: { products: true },
+            take: 1
+          }
+        },
+        take: 3
+      }
+    }
+  })
+
   if (!cluster) notFound()
 
-  const content = generateGuideContent(cluster)
-  const relatedProducts = getApprovedProducts()
-    .filter((p) => p.keywordClusterIds.includes(cluster.id))
-    .slice(0, 3)
+  const content = generateGuideContent(cluster as any)
+  const relatedProducts = cluster.products
+  const featuredBundle = (relatedProducts[0] as any)?.bundles?.[0]
 
   const schemas = [
     articleSchema({ title: content.h1, description: content.metaDescription, slug: params.slug, section: 'guides' }),
@@ -49,6 +71,8 @@ export default function GuidePage({ params }: Props) {
       { name: content.h1, href: `/guides/${params.slug}` },
     ]),
   ]
+// ... [Remaining UI code stays the same]
+
 
   return (
     <>
@@ -106,6 +130,11 @@ export default function GuidePage({ params }: Props) {
                 <div key={i} style={{ marginBottom: 'var(--space-10)' }}>
                   {section.heading && <h2>{section.heading}</h2>}
                   <p>{section.body}</p>
+
+                  {/* Inject bundling right after the problem analysis */}
+                  {section.type === 'problem' && featuredBundle && (
+                    <BundleShowcase bundle={featuredBundle} />
+                  )}
 
                   {/* Inject related products in product-pitch section */}
                   {section.type === 'product-pitch' && relatedProducts.length > 0 && (
@@ -229,6 +258,14 @@ export default function GuidePage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {relatedProducts.length > 0 && (
+        <StickyCTA 
+          productTitle={relatedProducts[0].title} 
+          price={relatedProducts[0].price} 
+          slug={relatedProducts[0].slug} 
+        />
+      )}
     </>
   )
 }

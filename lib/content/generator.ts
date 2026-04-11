@@ -35,30 +35,32 @@ export interface GeneratedPageContent {
 // Guardrails: problem-first hierarchy enforced in every template
 // ============================================================
 
-export function generateGuideContent(cluster: KeywordCluster): GeneratedPageContent {
+export function generateGuideContent(cluster: any): GeneratedPageContent {
+  const ai = cluster.aiContent as any
+
   return {
     metaTitle: `${toTitleCase(cluster.keyword)} — Complete Guide | TrendDrop`,
-    metaDescription: `Struggling with ${cluster.painPoint.toLowerCase()}? Here's what actually works — plus the products that solve it for good.`,
+    metaDescription: ai?.empathyIntro || `Struggling with ${cluster.painPoint.toLowerCase()}? Here's what actually works — plus the products that solve it for good.`,
     h1: toTitleCase(cluster.keyword),
-    heroSubline: `Here's why this happens — and the exact solution that works.`,
+    heroSubline: ai?.empathyIntro || `Here's why this happens — and the exact solution that works.`,
 
     sections: [
       {
         type: 'intro',
         heading: 'If This Is You, You\'re Not Alone',
-        body: `You searched "${cluster.keyword}" for a reason. ${cluster.painPoint} It's not a minor inconvenience — it affects your work, your mood, and your long-term health. The good news: the cause is specific, and the solution is simpler than you think.`,
+        body: ai?.empathyIntro || `You searched "${cluster.keyword}" for a reason. ${cluster.painPoint} It's not a minor inconvenience — it affects your work, your mood, and your long-term health. The good news: the cause is specific, and the solution is simpler than you think.`,
         keywords: [cluster.keyword, ...cluster.relatedKeywords.slice(0, 2)],
       },
       {
         type: 'problem',
         heading: 'Why This Happens (The Real Cause)',
-        body: `Most people treat the symptom, not the cause. ${cluster.painPoint} Understanding why it happens is the first step to fixing it permanently — not just masking it.`,
+        body: ai?.deepProblemAnalysis || `Most people treat the symptom, not the cause. ${cluster.painPoint} Understanding why it happens is the first step to fixing it permanently — not just masking it.`,
         keywords: cluster.relatedKeywords,
       },
       {
         type: 'solution',
         heading: 'What Actually Works',
-        body: `${cluster.solutionAngle} Unlike generic advice, this approach targets the root cause. Here's a breakdown of what works, what doesn't, and why most people give up before they find the right solution.`,
+        body: ai?.scienceBehindSolution || `${cluster.solutionAngle} Unlike generic advice, this approach targets the root cause. Here's a breakdown of what works, what doesn't, and why most people give up before they find the right solution.`,
         keywords: [cluster.keyword],
       },
       {
@@ -73,9 +75,9 @@ export function generateGuideContent(cluster: KeywordCluster): GeneratedPageCont
       },
     ],
 
-    faq: generateFaq(cluster),
+    faq: ai?.faq || generateFaq(cluster),
 
-    internalLinks: cluster.relatedPages.map((slug) => ({
+    internalLinks: cluster.relatedSlugs.map((slug: string) => ({
       label: toTitleCase(slug.replace(/-/g, ' ')),
       href: `/guides/${slug}`,
     })),
@@ -108,7 +110,7 @@ export function generateProblemContent(cluster: KeywordCluster): GeneratedPageCo
 
     faq: generateFaq(cluster),
 
-    internalLinks: cluster.relatedPages.map((slug) => ({
+    internalLinks: cluster.relatedSlugs.map((slug) => ({
       label: toTitleCase(slug.replace(/-/g, ' ')),
       href: `/problems/${slug}`,
     })),
@@ -141,7 +143,7 @@ export function generateSolutionContent(cluster: KeywordCluster): GeneratedPageC
 
     faq: generateFaq(cluster),
 
-    internalLinks: cluster.relatedPages.map((slug) => ({
+    internalLinks: cluster.relatedSlugs.map((slug) => ({
       label: toTitleCase(slug.replace(/-/g, ' ')),
       href: `/solutions/${slug}`,
     })),

@@ -1,14 +1,17 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { getRisingClusters } from '@/lib/data/keywords'
+import prisma from '@/lib/prisma'
 
 export const metadata: Metadata = {
   title: 'Guides & Case Studies | TrendDrop',
   description: 'Deep dives into chronic problems and the products that actually fix them.',
 }
 
-export default function GuidesPage() {
-  const clusters = getRisingClusters()
+export default async function GuidesPage() {
+  const clusters = await prisma.keywordCluster.findMany({
+    where: { trend: 'rising' },
+    orderBy: { searchVolume: 'desc' }
+  })
   const featured = clusters[0]
   const rest = clusters.slice(1)
 

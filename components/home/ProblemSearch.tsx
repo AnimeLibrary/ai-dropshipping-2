@@ -6,16 +6,31 @@ export default function ProblemSearch() {
   const [query, setQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!query.trim()) return
     
     setIsSearching(true)
-    // Simulate finding a solution
-    setTimeout(() => {
+    
+    try {
+      const res = await fetch('/api/search/semantic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      })
+      const data = await res.json()
+      
+      if (data.url) {
+        window.location.href = data.url
+      } else {
+        window.location.href = '/collections'
+      }
+    } catch (e) {
+      console.error('[Search] Failed:', e)
+      window.location.href = '/solutions'
+    } finally {
       setIsSearching(false)
-      window.location.href = `/solutions`
-    }, 1200)
+    }
   }
 
   return (

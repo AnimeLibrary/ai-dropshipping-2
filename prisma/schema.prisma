@@ -51,7 +51,9 @@ model KeywordCluster {
   solutionAngle   String   @db.Text
   targetSlug      String   @unique
   targetPageType  String   // guide, problem, solution
+  relatedSlugs    String[] // Array of slugs for internal linking
   source          String   @default("manual")
+  aiContent       Json?    // Stores { story: string, faq: [], angles: [] }
   
   // Relations
   products        Product[] @relation("ProductToCluster")
@@ -132,3 +134,14 @@ model ProcessedEvent {
   processedAt   DateTime @default(now())
 }
 
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String   // info, warn, error
+  source    String   // which service/route
+  message   String   @db.Text
+  meta      String?  @db.Text // JSON string for extra data
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([createdAt])
+}
