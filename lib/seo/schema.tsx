@@ -7,8 +7,8 @@
 import { Product } from '@/lib/data/products'
 import { GeneratedPageContent } from '@/lib/content/generator'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://trenddrop.store'
-const SITE_NAME = 'TrendDrop'
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://vexsen.store'
+const SITE_NAME = 'Vexsen'
 
 // ============================================================
 // PRODUCT SCHEMA
@@ -148,8 +148,7 @@ export function organizationSchema() {
     '@type': 'Organization',
     name: SITE_NAME,
     url: SITE_URL,
-    description:
-      'AI-powered product discovery store. Trending products curated from Kalodata, Minea, and ZIK Analytics.',
+    description: 'Premium everyday essentials engineered for life. Functional design, uncompromising quality.',
     sameAs: [],
   }
 }
