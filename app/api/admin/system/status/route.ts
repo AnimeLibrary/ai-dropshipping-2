@@ -44,10 +44,13 @@ export async function GET() {
 }
 
 async function pingLMStudio() {
-  const endpoint = process.env.AI_API_ENDPOINT || 'http://172.20.10.12:1234'
+  const endpoint = process.env.AI_API_ENDPOINT || 'http://127.0.0.1:1234'
   const start = Date.now()
   try {
-    const res = await fetch(`${endpoint}/v1/models`, { signal: AbortSignal.timeout(3000) })
+    const res = await fetch(`${endpoint}/v1/models`, {
+      headers: { Authorization: `Bearer ${process.env.AI_API_KEY || ''}` },
+      signal: AbortSignal.timeout(3000)
+    })
     const data = await res.json().catch(() => ({}))
     return { status: res.ok ? 'online' : 'error', latencyMs: Date.now() - start, model: data?.data?.[0]?.id || 'unknown' }
   } catch (e: any) {
