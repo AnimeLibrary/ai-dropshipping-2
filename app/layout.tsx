@@ -21,7 +21,7 @@ const outfit = Outfit({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://trenddrop.store'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://vexsen.store'),
   title: {
     default: 'Vexsen — Curated for Everyday Life',
     template: '%s | Vexsen',
