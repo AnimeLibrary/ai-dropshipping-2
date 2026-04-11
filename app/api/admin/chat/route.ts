@@ -74,16 +74,14 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json() as { messages: ChatMessage[] }
 
-    const fullMessages: ChatMessage[] = [...messages]
-    if (fullMessages.length > 0) {
-      if (fullMessages[0].role === 'user') {
-        fullMessages[0].content = `[SYSTEM PROTOCOL]:\n${AGENT_SYSTEM_PROMPT}\n\n[USER COMMAND]:\n${fullMessages[0].content}`
-      } else {
-        fullMessages.unshift({ role: 'user', content: `[SYSTEM PROTOCOL]:\n${AGENT_SYSTEM_PROMPT}` })
-      }
-    } else {
-      fullMessages.push({ role: 'user', content: `[SYSTEM PROTOCOL]:\n${AGENT_SYSTEM_PROMPT}` })
-    }
+    // Remove the initial UI welcome message from history to prevent LM Studio Jinja template crashes 
+    // (their template assumes the first non-system message is ALWAYS a user message)
+    const filteredMessages = messages.filter(m => !(m.role === 'assistant' && m.content.includes('Vexsen AI Agent — Online')))
+
+    const fullMessages: ChatMessage[] = [
+      { role: 'system', content: AGENT_SYSTEM_PROMPT },
+      ...filteredMessages
+    ]
 
     // Log incoming user message
     const lastUserMsg = messages.filter(m => m.role === 'user').at(-1)
