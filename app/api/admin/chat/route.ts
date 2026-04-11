@@ -74,10 +74,16 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json() as { messages: ChatMessage[] }
 
-    const fullMessages: ChatMessage[] = [
-      { role: 'system', content: AGENT_SYSTEM_PROMPT },
-      ...messages
-    ]
+    const fullMessages: ChatMessage[] = [...messages]
+    if (fullMessages.length > 0) {
+      if (fullMessages[0].role === 'user') {
+        fullMessages[0].content = `[SYSTEM PROTOCOL]:\n${AGENT_SYSTEM_PROMPT}\n\n[USER COMMAND]:\n${fullMessages[0].content}`
+      } else {
+        fullMessages.unshift({ role: 'user', content: `[SYSTEM PROTOCOL]:\n${AGENT_SYSTEM_PROMPT}` })
+      }
+    } else {
+      fullMessages.push({ role: 'user', content: `[SYSTEM PROTOCOL]:\n${AGENT_SYSTEM_PROMPT}` })
+    }
 
     // Log incoming user message
     const lastUserMsg = messages.filter(m => m.role === 'user').at(-1)
@@ -113,12 +119,13 @@ export async function POST(req: NextRequest) {
 
       if (!llmRes.ok) {
         const err = await llmRes.json().catch(() => ({}))
+        const errMsg = err?.error || err?.message || `HTTP ${llmRes.status} from LM Studio.`
         await prisma.systemLog.create({
           data: { level: 'error', source: 'agent:llm', message: `LM Studio error ${llmRes.status}`, meta: JSON.stringify(err) }
         })
         return NextResponse.json(
-          { error: `AI agent offline. Ensure LM Studio is running at ${AI_BASE_URL}` },
-          { status: 502 }
+          { error: `LM Studio API rejected the prompt: ${errMsg}` },
+          { status: llmRes.status }
         )
       }
 
