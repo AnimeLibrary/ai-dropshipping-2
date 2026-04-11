@@ -225,7 +225,6 @@ export default async function ProductPage({ params }: Props) {
                   </div>
                 ))}
               </div>
-              </div>
             </div>
 
             {/* ── Submit a Review ── */}
