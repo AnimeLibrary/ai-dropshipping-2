@@ -3,7 +3,7 @@ import Link from 'next/link'
 import prisma from '@/lib/prisma'
 
 export const metadata: Metadata = {
-  title: 'Guides & Case Studies | TrendDrop',
+  title: 'Guides & Case Studies | Vexsen',
   description: 'Deep dives into chronic problems and the products that actually fix them.',
 }
 

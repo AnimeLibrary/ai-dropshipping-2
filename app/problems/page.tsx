@@ -4,7 +4,7 @@ import ProblemCategories from '@/components/home/ProblemCategories'
 import ProblemSearch from '@/components/home/ProblemSearch'
 
 export const metadata: Metadata = {
-  title: 'Shop by Problem | TrendDrop',
+  title: 'Shop by Problem | Vexsen',
   description: "We don't organize by product type. We organize by the pain point you are actually dealing with.",
 }
 

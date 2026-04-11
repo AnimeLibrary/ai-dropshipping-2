@@ -23,7 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <html lang="en">
       <head>
-        <title>TrendDrop Admin</title>
+        <title>Vexsen Admin</title>
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>

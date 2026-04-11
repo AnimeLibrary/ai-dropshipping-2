@@ -11,7 +11,7 @@ import { prisma } from '@/lib/db/prisma'
 
 const AI_BASE_URL = process.env.AI_API_ENDPOINT
   ? `${process.env.AI_API_ENDPOINT.replace(/\/$/, '')}/v1`
-  : 'http://172.20.10.12:1234/v1'
+  : 'http://127.0.0.1:1234/v1'
 
 const MAX_ITERATIONS = 8
 
@@ -20,7 +20,7 @@ ${WORKFLOW_SYSTEM_PROMPT}
 
 ## YOUR AUTHORITY
 
-You are the TrendDrop AI Operations Director. You have DIRECT database access via tools and must use them proactively — not just talk about it.
+You are the Vexsen AI Operations Director. You have DIRECT database access via tools and must use them proactively — not just talk about it.
 
 ### MANDATORY BEHAVIOR:
 
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
       // Execute every tool call in this turn
       for (const toolCall of assistantMsg.tool_calls) {
         let args: Record<string, any> = {}
-        try { args = JSON.parse(toolCall.function.arguments) } catch {}
+        try { args = JSON.parse(toolCall.function.arguments) } catch { }
 
         console.log(`[Agent] Tool: ${toolCall.function.name}`, Object.keys(args))
         const result = await executeTool(toolCall.function.name, args)
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
     console.error('[Agent] Fatal:', error)
     await prisma.systemLog.create({
       data: { level: 'error', source: 'agent:chat', message: error.message }
-    }).catch(() => {})
+    }).catch(() => { })
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

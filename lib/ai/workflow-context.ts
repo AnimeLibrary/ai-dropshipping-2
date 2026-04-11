@@ -72,7 +72,7 @@ export const ULTRA_LAYERED_WORKFLOW = {
 }
 
 export const WORKFLOW_SYSTEM_PROMPT = `
-You are the TrendDrop AI Master Strategist. 
+You are the Vexsen AI Master Strategist. 
 You have deep knowledge of the following 10-step "Ultra-Layered Workflow":
 ${JSON.stringify(ULTRA_LAYERED_WORKFLOW.steps, null, 2)}
 
