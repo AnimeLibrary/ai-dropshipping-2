@@ -8,7 +8,6 @@ const PROBLEM_CATEGORIES = [
     painLine: "You've adjusted your chair 50 times. It still hurts.",
     hookLine: "Here's why — and what's actually fixing it.",
     href: '/problems/back-pain',
-    count: 14,
     trending: true,
   },
   {
@@ -18,7 +17,6 @@ const PROBLEM_CATEGORIES = [
     painLine: "It's 2am. You're exhausted but your brain won't stop.",
     hookLine: "This is what your nervous system actually needs.",
     href: '/problems/sleep',
-    count: 11,
     trending: true,
   },
   {
@@ -28,7 +26,6 @@ const PROBLEM_CATEGORIES = [
     painLine: 'Daily headaches, neck strain, eye fatigue — it compounds.',
     hookLine: "The remote work problem stack, solved in one place.",
     href: '/problems/home-office',
-    count: 9,
     trending: false,
   },
   {
@@ -38,7 +35,6 @@ const PROBLEM_CATEGORIES = [
     painLine: 'Hair everywhere. Guests coming over. Lint rolls half gone.',
     hookLine: "One product stops the cycle. Here it is.",
     href: '/problems/pet-care',
-    count: 8,
     trending: false,
   },
   {
@@ -48,7 +44,6 @@ const PROBLEM_CATEGORIES = [
     painLine: "You're putting in the work but your body won't recover fast enough.",
     hookLine: "Tools serious about results — not aesthetics.",
     href: '/problems/fitness',
-    count: 16,
     trending: true,
   },
   {
@@ -58,7 +53,6 @@ const PROBLEM_CATEGORIES = [
     painLine: 'Prep takes too long. Cleanup takes longer. Every night.',
     hookLine: "Smart products that make cooking effortless.",
     href: '/problems/kitchen',
-    count: 12,
     trending: false,
   },
 ]
@@ -142,7 +136,7 @@ export default function ProblemCategories() {
                     fontWeight: 600,
                   }}
                 >
-                  {cat.count} solutions →
+                  Explore guides →
                 </span>
               </div>
             </div>

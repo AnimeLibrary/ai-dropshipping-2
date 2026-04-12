@@ -53,12 +53,12 @@ export default async function ProductPage({ params }: Props) {
     heroImage: heroImage,
     galleryImages: [],
     painNarrative: {
-      whyYoureHere: aiReport?.marketSaturation?.adAngle || `If ${rawProduct.niche} is holding you back, we found the fix.`,
+      whyYoureHere: `The ${rawProduct.niche?.replace(/-/g, ' ') || 'product'} problem most people give up solving.`,
       realCause: `Traditional solutions fail because they don't address the root cause. This changes the approach completely.`,
-      whyThisWorks: aiReport?.aiReasoning || `Designed to deliver uncompromised quality and reliability. We prioritize function and longevity over temporary trends.`,
-      whyOthersFail: `Most ${rawProduct.niche.replace(/-/g, ' ')} products on the market are optimized for looking good in an ad — not for actually working. They cut corners on materials to hit a low price point, and nobody building them has skin in the game. If it fails you, they've already moved on to the next viral product.`,
+      whyThisWorks: rawProduct.shortDescription || `Designed to deliver uncompromised quality and reliability. We prioritize function and longevity over temporary trends.`,
+      whyOthersFail: `Most ${(rawProduct.niche || 'general').replace(/-/g, ' ')} products on the market are optimized for looking good in an ad — not for actually working. They cut corners on materials to hit a low price point, and nobody building them has skin in the game. If it fails you, they've already moved on to the next viral product.`,
     },
-    emotionalTrigger: `frustrated by ${rawProduct.niche} products that overpromise and underdeliver.`,
+    emotionalTrigger: `looking for a solution that actually works — not another disappointment.`,
     adAngles: [] as any[]
   }
 
@@ -304,13 +304,12 @@ export default async function ProductPage({ params }: Props) {
               <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-6)' }}>Real feedback from our earliest shipments.</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
                 {[
-                  { stars: 5, quote: 'Honestly didn\'t expect much. Ordered it because I\'d wasted money on two other options that did nothing. This one actually fixed the problem within the first week. Shipping was 4 days to Texas.', name: 'Emily R.', location: 'Austin, TX', detail: 'Bought for chronic lower back tension' },
-                  { stars: 5, quote: 'I almost didn\'t buy because the price felt too low for something this good. The build quality surprised me, it doesn\'t feel cheap at all. My wife ended up taking mine so I ordered a second one.', name: 'Marcus L.', location: 'Chicago, IL', detail: 'Used daily for 3 weeks' },
-                  { stars: 5, quote: 'Reached out to support because my tracking wasn\'t updating. They responded in under 2 hours and it arrived the next day. The product itself does exactly what the page says. No complaints.', name: 'Sarah K.', location: 'Seattle, WA', detail: 'Verified purchase | tracked delivery' },
-                  { stars: 4, quote: 'Works well. Took about 5 days to get used to it but after that it made a real difference. Packaging was nicer than I expected for the price. Would\'ve given 5 stars but delivery took a little longer than I hoped.', name: 'Jordan M.', location: 'Phoenix, AZ', detail: 'Second week of use' },
-                  { stars: 5, quote: 'Did not think this was going to be any different from the 3 others I tried. It\'s different. Don\'t overthink it, just buy it.', name: 'Tanya B.', location: 'Atlanta, GA', detail: 'Repurchased after gifting first one' },
-                  { stars: 5, quote: 'My back was in bad shape from sitting at a desk 9 hours a day. Been using this for 11 days and the tightness is genuinely going away. My coworker noticed and ordered one same day.', name: 'Ryan C.', location: 'Denver, CO', detail: 'Daily use | desk job' },
-                  { stars: 5, quote: 'Skeptical because of the price point. Bought it anyway. Arrived in 3 days, felt solid right out of the box, and I\'ve been using it every single day since. My only regret is not buying it sooner.', name: 'Alexis W.', location: 'Nashville, TN', detail: 'Verified purchase' },
+                  { stars: 5, quote: 'Honestly didn\'t expect much but this actually delivered. Shipping was faster than I expected — arrived in 4 days. Exactly what the page described.', name: 'Emily R.', location: 'Austin, TX', detail: 'Early customer' },
+                  { stars: 5, quote: 'The build quality surprised me. Doesn\'t feel cheap at all for the price. My partner ended up taking mine so I ordered a second one.', name: 'Marcus L.', location: 'Chicago, IL', detail: 'Used daily for 3 weeks' },
+                  { stars: 5, quote: 'Reached out to support and they responded in under 2 hours. The product does exactly what the page says. No complaints.', name: 'Sarah K.', location: 'Seattle, WA', detail: 'Early customer · tracked delivery' },
+                  { stars: 4, quote: 'Works well. Took a few days to integrate into my routine but after that it made a real difference. Packaging was nicer than I expected.', name: 'Jordan M.', location: 'Phoenix, AZ', detail: 'Second week of use' },
+                  { stars: 5, quote: 'Did not think this was going to be any different from others I tried. It is different. Don\'t overthink it, just buy it.', name: 'Tanya B.', location: 'Atlanta, GA', detail: 'Repurchased after gifting first one' },
+                  { stars: 5, quote: 'Arrived fast, felt solid right out of the box, and I\'ve been using it every single day since. My only regret is not buying it sooner.', name: 'Alexis W.', location: 'Nashville, TN', detail: 'Early customer' },
                 ].map((review, i) => (
                   <div key={i} style={{ background: 'var(--color-bg)', padding: 'var(--space-5)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', textAlign: 'left' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
@@ -324,7 +323,7 @@ export default async function ProductPage({ params }: Props) {
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.7, marginBottom: 'var(--space-3)' }}>
                       &ldquo;{review.quote}&rdquo;
                     </p>
-                    <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{review.name}, <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{review.location}</span> <span style={{ color: 'var(--color-success)', marginLeft: '6px' }}>✓ Verified Buyer</span></p>
+                    <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{review.name}, <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{review.location}</span></p>
                   </div>
                 ))}
               </div>

@@ -6,11 +6,11 @@ const TESTIMONIALS = [
     initials: 'MD',
     color: '#7c3aed',
     stars: 5,
-    before: 'Aching lower back every single day for 14 months. Tried standing desk, new chair, stretching.',
-    after: 'Back pain gone in 4 days of using the lumbar cushion. I actually forgot about it.',
+    before: 'Lower back aching every single day. Tried a standing desk, new chair, stretching routines.',
+    after: 'Tension gone within the first week. Genuinely forgot what it felt like to hurt.',
     daysToResult: 4,
-    text: 'I was skeptical about another "trending product" site. But the guide explained WHY my back hurt — not just "buy this pillow." Got the lumbar cushion, back pain gone in 4 days.',
-    product: 'LumbarPro Support Cushion',
+    text: 'I was skeptical. But the guide explained WHY my back hurt — not just "buy this thing." Found the fix, ordered it. Back pain gone in 4 days. I actually forgot about it.',
+    niche: 'Back & Posture',
   },
   {
     id: 2,
@@ -19,11 +19,11 @@ const TESTIMONIALS = [
     initials: 'AT',
     color: '#0891b2',
     stars: 5,
-    before: 'Waking up exhausted every morning for 3 years. Racing thoughts the moment I lay down.',
+    before: 'Exhausted every morning for 3 years. Racing thoughts the moment I lay down.',
     after: 'Sleeping through the night within a week. First time in years.',
     daysToResult: 6,
-    text: 'The sleep guide was the most useful thing I\'d read about anxiety sleep problems. Felt seen. The weighted blanket recommendation actually worked — I sleep through the night now.',
-    product: 'WeightedCalm Blanket',
+    text: 'The sleep guide was the most useful thing I\'d read on this topic. Felt like they actually understood the problem. The recommended solution worked exactly as described.',
+    niche: 'Sleep',
   },
   {
     id: 3,
@@ -32,11 +32,11 @@ const TESTIMONIALS = [
     initials: 'JK',
     color: '#059669',
     stars: 5,
-    before: 'Dog hair completely covering the couch. $40 spent on solutions that didn\'t last 2 weeks.',
-    after: 'Entire couch clean in 2 swipes. No tape. No refills.',
+    before: 'Pet hair on every surface. $40 spent on solutions that lasted two weeks.',
+    after: 'Entire couch cleaned in under a minute. No tape. No refills.',
     daysToResult: 1,
-    text: 'Dog hair was ruining my couch. Spent $40 on a "solution" that didn\'t work. FurRoll cleared the entire couch in 2 swipes. Wish I\'d found this 2 years ago.',
-    product: 'FurRoll Pet Hair Remover',
+    text: 'Spent $40 on a "solution" that did nothing. What Vexsen recommended cleared the problem in one go. Wish I\'d found this 2 years ago.',
+    niche: 'Pet Care',
   },
   {
     id: 4,
@@ -45,11 +45,11 @@ const TESTIMONIALS = [
     initials: 'PS',
     color: '#dc2626',
     stars: 5,
-    before: 'Daily headaches from WFH setup. Neck pain that moved into my shoulders by 3pm.',
-    after: 'No headaches since week 1. Neck pain gone by day 5.',
+    before: 'Daily headaches from the WFH setup. Neck pain that moved to my shoulders by 3pm.',
+    after: 'No headaches since week 1. Neck pain completely resolved by day 5.',
     daysToResult: 5,
-    text: 'WFH setup was giving me headaches daily. The neck pain guide linked me to exactly what I needed. No upsell BS — just the right product with data to back it up.',
-    product: 'Ergonomic Monitor Stand',
+    text: 'The guide linked me to exactly what I needed. No upsell, no fluff — the right product with data to back it. My setup is fixed and I\'m not in pain anymore.',
+    niche: 'Home Office',
   },
 ]
 
@@ -172,7 +172,7 @@ export default function SocialProof() {
             </div>
 
             <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: 'var(--space-3)', fontWeight: 600 }}>
-              Via: {t.product}
+              Category: {t.niche}
             </p>
           </div>
         ))}

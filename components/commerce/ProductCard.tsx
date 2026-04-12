@@ -40,6 +40,26 @@ export default function ProductCard({ product, index = 0 }: Props) {
     }
   } catch (e) {}
 
+  // SAFETY: Strip any internal/supplier data that leaked into customer-facing fields.
+  // Patterns: "Supplier price:", "Sourced from CJ", AI JSON blobs, margin notes.
+  const INTERNAL_PATTERNS = [
+    /supplier\s+price\s*:/i,
+    /sourced\s+from\s+(cj|aliexpress|kalodata)/i,
+    /passes\s+all\s+financial/i,
+    /recommended\s+for\s+immediate\s+approval/i,
+    /margin\s*[:=]\s*[\d.]+%/i,
+    /niche\s+saturation/i,
+  ]
+  const safeDescription = (() => {
+    if (!product.shortDescription) return product.shortDescription
+    const hasLeak = INTERNAL_PATTERNS.some(re => re.test(product.shortDescription!))
+    if (hasLeak) {
+      console.warn(`[ProductCard] Internal data detected in shortDescription for: ${product.title}`)
+      return null // Suppress entirely rather than show corrupt copy
+    }
+    return product.shortDescription
+  })()
+
   return (
     <article
       className="product-card"
@@ -134,14 +154,14 @@ export default function ProductCard({ product, index = 0 }: Props) {
         </h3>
 
         {/* Short description */}
-        {product.shortDescription && (
+        {safeDescription && (
           <p style={{
             fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)',
             lineHeight: 1.5, marginBottom: 10, flex: 1,
             display: '-webkit-box', WebkitLineClamp: 2,
             WebkitBoxOrient: 'vertical', overflow: 'hidden'
           }}>
-            {product.shortDescription}
+            {safeDescription}
           </p>
         )}
 
