@@ -217,7 +217,13 @@ export default async function ProductPage({ params }: Props) {
                       </span>
                     </div>
 
-                    <CheckoutButton priceId={product.stripePriceId!} productName={product.title} />
+                    <CheckoutButton 
+                      productId={product.id}
+                      title={product.title}
+                      price={product.price}
+                      imageUrl={product.heroImage || undefined}
+                      priceId={product.stripePriceId || undefined} 
+                    />
                     <p style={{ position: 'absolute', top: '40px', right: '-10px', background: 'var(--color-accent)', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '4px 8px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', transform: 'rotate(4deg)' }}>
                       Limited Batch
                     </p>
