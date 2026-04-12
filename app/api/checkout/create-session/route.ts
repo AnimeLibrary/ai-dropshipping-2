@@ -35,7 +35,6 @@ export async function POST(req: Request) {
 
     // ── Stripe Checkout Session ───────────────────────────────────────────────
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'klarna', 'afterpay_clearpay'],
       line_items: [
         {
           price_data: {
@@ -60,8 +59,8 @@ export async function POST(req: Request) {
       shipping_address_collection: {
         allowed_countries: ['US', 'CA', 'GB', 'AU'],
       },
-      success_url: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/`,
+      success_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${req.headers.get('origin') || process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/`,
       metadata: {
         productId,
         isBundle: String(!!bundleItems),
