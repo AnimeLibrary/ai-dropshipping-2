@@ -5,8 +5,8 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'cdn.shopify.com' },
-      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: '**' },
     ],
     formats: ['image/avif', 'image/webp'],
   },
