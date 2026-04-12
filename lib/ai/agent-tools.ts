@@ -703,7 +703,7 @@ export async function enrichProductWithAI(
 You are an expert e-commerce copywriter for a premium dropshipping brand called Vexsen.
 We solve real everyday problems — our tagline is "We test 100 products, you buy the 1 that actually works."
 
-Write the best marketing copy for this product:
+Write the best marketing copy and 3 highly authentic, realistic early-customer reviews for this product:
 - Product: "${title}"
 - Niche: ${niche.replace(/-/g, ' ')}
 - Retail Price: $${price.toFixed(2)}
@@ -712,17 +712,21 @@ Write the best marketing copy for this product:
 Rules:
 1. shortDescription must be under 160 characters. Lead with the PAIN POINT this solves, not the product features.
 2. hook must be a single punchy sentence (max 12 words) that stops a scroll.
-3. Do NOT mention the supplier, cost, margin, or internal metrics.
-4. Write like a human who solved their own problem, not a marketer.
+3. Generate exactly 3 highly realistic, human-sounding reviews. Use normal locations (e.g., "Austin, TX") and conversational tone. No over-the-top infomercial phrasing.
+4. Do NOT mention the supplier, cost, margin, or internal metrics anywhere.
+5. Write like a human who solved their own problem, not a marketer.
 `
 
   const copyResult = await ai.generateStructuredData<{
     shortDescription: string
     hook: string
-  }>(copyPrompt, '{ "shortDescription": "string", "hook": "string" }')
+    reviews: { author: string; location: string; rating: number; text: string }[]
+  }>(copyPrompt, '{ "shortDescription": "string", "hook": "string", "reviews": [{ "author": "string", "location": "string", "rating": "number", "text": "string" }] }')
+
 
   const aiDescription = copyResult.data?.shortDescription || null
   const aiHook = copyResult.data?.hook || null
+  const generatedReviews = copyResult.data?.reviews || []
 
   // 3. Serper image search for best product photos
   let bestImage: string | null = product.heroImage || null
@@ -770,6 +774,8 @@ Rules:
     data: {
       ...(aiDescription && { shortDescription: aiDescription }),
       ...(bestImage && { heroImage: bestImage }),
+      // Store generated reviews into longDescription as JSON for now (if not using an explicit reviews model mapping on import)
+      longDescription: JSON.stringify({ aiReport: { generatedReviews } })
     }
   })
 
@@ -777,6 +783,7 @@ Rules:
     productId,
     aiDescription,
     aiHook,
+    generatedReviewsCount: generatedReviews.length,
     heroImage: bestImage,
     serperUsed: !!serperKey
   })

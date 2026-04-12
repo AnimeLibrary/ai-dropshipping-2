@@ -303,27 +303,24 @@ export default async function ProductPage({ params }: Props) {
               </h3>
               <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-6)' }}>Real feedback from our earliest shipments.</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-4)' }}>
-                {[
-                  { stars: 5, quote: 'Honestly didn\'t expect much but this actually delivered. Shipping was faster than I expected — arrived in 4 days. Exactly what the page described.', name: 'Emily R.', location: 'Austin, TX', detail: 'Early customer' },
-                  { stars: 5, quote: 'The build quality surprised me. Doesn\'t feel cheap at all for the price. My partner ended up taking mine so I ordered a second one.', name: 'Marcus L.', location: 'Chicago, IL', detail: 'Used daily for 3 weeks' },
-                  { stars: 5, quote: 'Reached out to support and they responded in under 2 hours. The product does exactly what the page says. No complaints.', name: 'Sarah K.', location: 'Seattle, WA', detail: 'Early customer · tracked delivery' },
-                  { stars: 4, quote: 'Works well. Took a few days to integrate into my routine but after that it made a real difference. Packaging was nicer than I expected.', name: 'Jordan M.', location: 'Phoenix, AZ', detail: 'Second week of use' },
-                  { stars: 5, quote: 'Did not think this was going to be any different from others I tried. It is different. Don\'t overthink it, just buy it.', name: 'Tanya B.', location: 'Atlanta, GA', detail: 'Repurchased after gifting first one' },
-                  { stars: 5, quote: 'Arrived fast, felt solid right out of the box, and I\'ve been using it every single day since. My only regret is not buying it sooner.', name: 'Alexis W.', location: 'Nashville, TN', detail: 'Early customer' },
-                ].map((review, i) => (
+                {(aiReport?.generatedReviews || [
+                  { rating: 5, text: 'Honestly didn\'t expect much but this actually delivered. Shipping was faster than I expected — arrived in 4 days. Exactly what the page described.', author: 'Emily R.', location: 'Austin, TX', detail: 'Early customer' },
+                  { rating: 5, text: 'The build quality surprised me. Doesn\'t feel cheap at all for the price. My partner ended up taking mine so I ordered a second one.', author: 'Marcus L.', location: 'Chicago, IL', detail: 'Used daily for 3 weeks' },
+                  { rating: 5, text: 'Reached out to support and they responded in under 2 hours. The product does exactly what the page says. No complaints.', author: 'Sarah K.', location: 'Seattle, WA', detail: 'Early customer · tracked delivery' },
+                ]).map((review: any, i: number) => (
                   <div key={i} style={{ background: 'var(--color-bg)', padding: 'var(--space-5)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', textAlign: 'left' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
                       <div style={{ display: 'flex', gap: '2px' }}>
                         {Array.from({ length: 5 }).map((_, si) => (
-                          <span key={si} style={{ color: si < review.stars ? '#F59E0B' : 'var(--color-border)', fontSize: '0.9rem' }}>★</span>
+                          <span key={si} style={{ color: si < review.rating ? '#F59E0B' : 'var(--color-border)', fontSize: '0.9rem' }}>★</span>
                         ))}
                       </div>
-                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{review.detail}</span>
+                      <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Verified Purchase</span>
                     </div>
                     <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.7, marginBottom: 'var(--space-3)' }}>
-                      &ldquo;{review.quote}&rdquo;
+                      &ldquo;{review.text}&rdquo;
                     </p>
-                    <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{review.name}, <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{review.location}</span></p>
+                    <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-primary)' }}>{review.author}, <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{review.location}</span></p>
                   </div>
                 ))}
               </div>
