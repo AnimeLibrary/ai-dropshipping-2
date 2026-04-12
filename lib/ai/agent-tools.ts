@@ -157,6 +157,20 @@ export const AGENT_TOOLS = [
         required: ['cj_product_id']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'enrich_product',
+      description: 'Uses AI to generate the best marketing copy and fetches real product images via Serper image search. Automatically updates the product shortDescription and heroImage in the database. Call this on any product that needs better copy or images — especially after import_cj_product.',
+      parameters: {
+        type: 'object',
+        properties: {
+          product_id: { type: 'string', description: 'The DB product ID to enrich.' }
+        },
+        required: ['product_id']
+      }
+    }
   }
 ]
 
@@ -186,6 +200,7 @@ export async function executeTool(name: string, args: Record<string, any>): Prom
       case 'search_cj_products':    return await toolSearchCJ(args.keyword, args.count)
       case 'import_cj_product':     return await toolImportCJ(args.cj_product_id, args.niche)
       case 'get_cj_shipping':       return await toolGetCJShipping(args.cj_product_id, args.country)
+      case 'enrich_product':        return await toolEnrichProduct(args.product_id)
       default:
         return { success: false, error: `Unknown tool: ${name}` }
     }
@@ -569,7 +584,7 @@ async function toolImportCJ(cjProductId: string, niche: string = 'general'): Pro
         validationStatus: 'pending',
         cjProductId: cjProductId,
         cjVariantId: variantId,
-        shortDescription: `Sourced from CJ Dropshipping. Supplier price: $${supplierPrice.toFixed(2)}.`,
+        shortDescription: null, // Will be filled by AI enrichment automatically
         suppliers: {
           create: [{
             name: 'CJ Dropshipping',
@@ -583,8 +598,10 @@ async function toolImportCJ(cjProductId: string, niche: string = 'general'): Pro
       }
     })
 
-    // Auto-analyze
+    // Auto-analyze then auto-enrich with AI copy + real images
     const analysis = await toolAnalyzeProduct(product.id)
+    // Fire enrichment async without blocking the approve flow
+    enrichProductWithAI(product.id, title, niche || 'general').catch(() => {})
 
     return {
       success: true,
@@ -632,5 +649,146 @@ async function toolGetCJShipping(cjProductId: string, country: string = 'US'): P
     }
   } catch (err: any) {
     return { success: false, error: `CJ shipping check failed: ${err.message}` }
+  }
+}
+
+// ─── AI ENRICHMENT ────────────────────────────────────────────
+
+/**
+ * Callable agent tool — enriches a product with AI copy + Serper images.
+ * Used when admin manually asks "enrich product [id]" via chat.
+ */
+async function toolEnrichProduct(productId: string): Promise<ToolResult> {
+  const product = await prisma.product.findUnique({ where: { id: productId } })
+  if (!product) return { success: false, error: `Product ${productId} not found.` }
+
+  const result = await enrichProductWithAI(productId, product.title, product.niche)
+  if (!result.success) return result
+
+  return {
+    success: true,
+    data: {
+      message: `✅ "${product.title}" enriched with AI copy and Serper images.`,
+      shortDescription: result.data.shortDescription,
+      heroImage: result.data.heroImage,
+    }
+  }
+}
+
+/**
+ * Core enrichment engine — called automatically after CJ import AND as an agent tool.
+ * Uses AI to write the best shortDescription and Serper to find the best product image.
+ */
+export async function enrichProductWithAI(
+  productId: string,
+  title: string,
+  niche: string
+): Promise<ToolResult> {
+  const { AIClient } = await import('@/lib/ai/ai-client')
+  const ai = new AIClient()
+
+  // 1. Fetch full product context for the AI
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { suppliers: true }
+  })
+  if (!product) return { success: false, error: 'Product not found for enrichment.' }
+
+  const price = Number(product.price)
+  const supplierPrice = Number(product.supplierPrice)
+  const margin = price > 0 ? Math.round(((price - supplierPrice) / price) * 100) : 0
+
+  // 2. Generate AI marketing copy
+  const copyPrompt = `
+You are an expert e-commerce copywriter for a premium dropshipping brand called Vexsen.
+We solve real everyday problems — our tagline is "We test 100 products, you buy the 1 that actually works."
+
+Write the best marketing copy for this product:
+- Product: "${title}"
+- Niche: ${niche.replace(/-/g, ' ')}
+- Retail Price: $${price.toFixed(2)}
+- Profit Margin: ${margin}%
+
+Rules:
+1. shortDescription must be under 160 characters. Lead with the PAIN POINT this solves, not the product features.
+2. hook must be a single punchy sentence (max 12 words) that stops a scroll.
+3. Do NOT mention the supplier, cost, margin, or internal metrics.
+4. Write like a human who solved their own problem, not a marketer.
+`
+
+  const copyResult = await ai.generateStructuredData<{
+    shortDescription: string
+    hook: string
+  }>(copyPrompt, '{ "shortDescription": "string", "hook": "string" }')
+
+  const aiDescription = copyResult.data?.shortDescription || null
+  const aiHook = copyResult.data?.hook || null
+
+  // 3. Serper image search for best product photos
+  let bestImage: string | null = product.heroImage || null
+  const serperKey = process.env.SERPER_API_KEY
+
+  if (serperKey) {
+    try {
+      const searchQuery = `${title} product photo white background`
+      const serperRes = await fetch('https://google.serper.dev/images', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': serperKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ q: searchQuery, num: 5 }),
+        signal: AbortSignal.timeout(8000)
+      })
+
+      if (serperRes.ok) {
+        const serperData = await serperRes.json()
+        const images: any[] = serperData.images || []
+
+        // Pick the best image: prefer jpg/webp, avoid SVG/GIF, pick highest res available
+        const validImage = images.find(img =>
+          img.imageUrl &&
+          !img.imageUrl.endsWith('.svg') &&
+          !img.imageUrl.endsWith('.gif') &&
+          (img.imageUrl.startsWith('https://') || img.imageUrl.startsWith('http://'))
+        )
+
+        if (validImage?.imageUrl) {
+          bestImage = validImage.imageUrl
+        }
+      }
+    } catch (e: any) {
+      console.warn('[Enrichment] Serper image search failed:', e.message)
+    }
+  } else {
+    console.warn('[Enrichment] SERPER_API_KEY not set — skipping image search.')
+  }
+
+  // 4. Update the product in DB with AI copy + best image
+  await prisma.product.update({
+    where: { id: productId },
+    data: {
+      ...(aiDescription && { shortDescription: aiDescription }),
+      ...(bestImage && { heroImage: bestImage }),
+    }
+  })
+
+  await logToDb('info', 'enrichment', `Product enriched: ${title}`, {
+    productId,
+    aiDescription,
+    aiHook,
+    heroImage: bestImage,
+    serperUsed: !!serperKey
+  })
+
+  return {
+    success: true,
+    data: {
+      productId,
+      shortDescription: aiDescription,
+      hook: aiHook,
+      heroImage: bestImage,
+      serperUsed: !!serperKey
+    }
   }
 }

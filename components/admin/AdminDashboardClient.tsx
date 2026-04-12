@@ -142,6 +142,20 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
     finally { setLoadingId(null) }
   }
 
+  const handleEnrich = async (productId: string, productTitle: string) => {
+    setLoadingId(`enrich-${productId}`)
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/enrich`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Enrichment failed')
+      showToast(`✨ Enriched: ${productTitle} — AI copy + image updated`)
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   const handleRefund = async (orderId: string, action: 'refund' | 'store_credit') => {
     setLoadingId(orderId)
     try {
@@ -294,6 +308,9 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                         </div>
 
                         <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} title="AI generates best copy + fetches product images via Serper" style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===`enrich-${p.id}`?0.5:1 }}>
+                            {loadingId===`enrich-${p.id}` ? '⏳ Enriching…' : '✨ Enrich'}
+                          </button>
                           <button onClick={()=>handleProductAction(p.id,'approve')} disabled={loadingId===p.id} style={{ background:'#22c55e22', border:'1px solid #22c55e44', color:'#4ade80', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===p.id?0.5:1 }}>
                             {loadingId===p.id?'…':'✅ Approve'}
                           </button>
@@ -316,7 +333,12 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                     <span style={{ fontWeight:600 }}>{p.title}</span>
                     <span style={{ color:'#6b7280', marginLeft:12, fontSize:12 }}>${p.price.toFixed(2)}</span>
                   </div>
-                  <Tag color='#22c55e'>APPROVED</Tag>
+                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                    <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} title="Re-enrich with latest AI copy + Serper images" style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'4px 12px', cursor:'pointer', fontWeight:700, fontSize:11, opacity:loadingId===`enrich-${p.id}`?0.5:1 }}>
+                      {loadingId===`enrich-${p.id}` ? '⏳…' : '✨ Enrich'}
+                    </button>
+                    <Tag color='#22c55e'>APPROVED</Tag>
+                  </div>
                 </div>
               ))}
             </div>
