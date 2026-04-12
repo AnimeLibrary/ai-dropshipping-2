@@ -1,175 +1,92 @@
 import Link from 'next/link'
-import { Product } from '@/lib/data/products'
+import ProductCard from '@/components/commerce/ProductCard'
+
+interface SimpleProduct {
+  id: string
+  slug: string
+  title: string
+  niche: string
+  category?: string | null
+  price: number
+  compareAtPrice?: number | null
+  heroImage: string
+  shortDescription?: string | null
+  trendScore?: number | null
+  validationStatus?: string
+}
 
 interface Props {
-  products: Product[]
+  products: SimpleProduct[]
 }
 
-// Simulated social proof numbers — replace with real analytics data
-function getSocialProofCount(trendScore: number): string {
-  const base = Math.floor(trendScore * 11.4 + 200)
-  return base.toLocaleString()
-}
+// Placeholder products shown when DB is empty — disappear once real products exist
+const PLACEHOLDER_PRODUCTS: SimpleProduct[] = [
+  { id: 'p1', slug: '#', title: 'Posture Corrector Pro', niche: 'back-pain', price: 39.99, compareAtPrice: 64.99, heroImage: '/placeholder.png', shortDescription: 'Eliminate upper back tension within 7 days of use.', trendScore: 95 },
+  { id: 'p2', slug: '#', title: 'Deep Sleep Bundle', niche: 'sleep', price: 49.99, compareAtPrice: 79.99, heroImage: '/placeholder.png', shortDescription: 'Fall asleep faster and wake up without grogginess.', trendScore: 88 },
+  { id: 'p3', slug: '#', title: 'Pet Hair Eraser Glove', niche: 'pets', price: 24.99, compareAtPrice: 39.99, heroImage: '/placeholder.png', shortDescription: 'Remove embedded pet hair from fabric in seconds.', trendScore: 82 },
+  { id: 'p4', slug: '#', title: 'Lumbar Relief Cushion', niche: 'back-pain', price: 34.99, compareAtPrice: 54.99, heroImage: '/placeholder.png', shortDescription: 'Desk chair insert that neutralises lower back pain all day.', trendScore: 78 },
+  { id: 'p5', slug: '#', title: 'Blue Light Sleep Glasses', niche: 'sleep', price: 29.99, compareAtPrice: 49.99, heroImage: '/placeholder.png', shortDescription: 'Block screen glare and prime your brain for sleep by 9pm.', trendScore: 74 },
+  { id: 'p6', slug: '#', title: 'Odour Eliminator Spray', niche: 'home', price: 19.99, compareAtPrice: 32.99, heroImage: '/placeholder.png', shortDescription: 'Industrial-grade odour removal that actually works.', trendScore: 71 },
+]
 
 export default function TrendingProducts({ products }: Props) {
+  const displayProducts = products.length > 0 ? products : PLACEHOLDER_PRODUCTS
+  const isEmpty = products.length === 0
+
   return (
-    <div>
+    <div id="trending-products">
       {/* Section header */}
       <div
         className="flex-between"
-        style={{ marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}
+        style={{ marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)', alignItems: 'flex-end' }}
       >
         <div>
           <span className="badge badge-glow" style={{ marginBottom: 'var(--space-3)' }}>
             📈 Trending Now
           </span>
           <h2 className="heading-xl">
-            These Are Solving the Problems{' '}
-            <span className="gradient-text">You Searched For</span>
+            Products People Are{' '}
+            <span className="gradient-text">Actually Buying</span>
           </h2>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginTop: 6 }}>
+            Every item is verified before it ships. Updated weekly.
+          </p>
         </div>
         <Link href="/collections" className="btn btn-secondary hide-mobile" id="trending-view-all">
-          View All →
+          Browse All →
         </Link>
       </div>
 
-      {/* Product Grid */}
-      <div className="grid-3" role="list" aria-label="Trending products">
-        {products.map((product, i) => (
-          <article
-            key={product.id}
-            className="product-card reveal"
-            style={{ animationDelay: `${i * 80}ms` }}
-            role="listitem"
-          >
-            {/* Hero image or styled placeholder */}
-            <div className="product-card-image">
-              {product.heroImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={product.heroImage}
-                  alt={product.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <div
-                  className="skeleton"
-                  style={{ width: '100%', height: '100%', borderRadius: 0 }}
-                  aria-hidden="true"
-                />
-              )}
+      {isEmpty && (
+        <div style={{
+          background: 'var(--color-bg-secondary)',
+          border: '1px dashed var(--color-border)',
+          borderRadius: 'var(--radius-lg)',
+          padding: 'var(--space-4)',
+          marginBottom: 'var(--space-6)',
+          textAlign: 'center'
+        }}>
+          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+            🤖 AI is sourcing products — these are example listings. Import products via the admin panel.
+          </p>
+        </div>
+      )}
 
-              {/* Validation status */}
-              {product.validationStatus === 'approved' && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 'var(--space-3)',
-                    left: 'var(--space-3)',
-                  }}
-                >
-                  <span
-                    style={{
-                      background: 'rgba(34,197,94,0.9)',
-                      color: 'white',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '999px',
-                      letterSpacing: '0.05em',
-                    }}
-                  >
-                    ✓ VALIDATED
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Body */}
-            <div className="product-card-body">
-              <p
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--color-text-muted)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  fontWeight: 600,
-                  marginBottom: 'var(--space-2)',
-                }}
-              >
-                {product.niche.replace(/-/g, ' ')} · {product.category}
-              </p>
-              <h3 className="product-card-title">{product.title}</h3>
-
-              {/* Human fix line — replaces "Top Ad Hook" */}
-              {product.adAngles[0] && (
-                <div
-                  style={{
-                    marginBottom: 'var(--space-3)',
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: 'var(--text-xs)',
-                      color: 'var(--color-accent)',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em',
-                      marginBottom: 'var(--space-1)',
-                    }}
-                  >
-                    Fixes:
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 'var(--text-sm)',
-                      color: 'var(--color-text-secondary)',
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {product.adAngles[0].pain}
-                  </p>
-                </div>
-              )}
-
-              {/* Social proof micro-line */}
-              <p
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--color-text-muted)',
-                  marginBottom: 'var(--space-4)',
-                  fontWeight: 600,
-                }}
-              >
-                🔥 {getSocialProofCount(product.trendScore)} people grabbed this this week
-              </p>
-
-              <div className="flex-between">
-                <div>
-                  <span className="product-card-price">${product.price.toFixed(2)}</span>
-                  {product.compareAtPrice && (
-                    <span className="product-card-price-original">
-                      ${product.compareAtPrice.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-                <Link
-                  href={`/products/${product.slug}`}
-                  id={`product-card-${product.id}`}
-                  className="btn btn-primary btn-sm"
-                >
-                  View →
-                </Link>
-              </div>
-            </div>
-          </article>
+      {/* Product Grid — dense, like Temu/Amazon */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))',
+        gap: 'var(--space-4)',
+      }} role="list" aria-label="Trending products">
+        {displayProducts.map((product, i) => (
+          <ProductCard key={product.id} product={product as any} index={i} />
         ))}
       </div>
 
       {/* Mobile view all */}
       <div style={{ textAlign: 'center', marginTop: 'var(--space-8)' }} className="hide-desktop">
         <Link href="/collections" className="btn btn-secondary" id="trending-view-all-mobile">
-          View All Collections →
+          View All Products →
         </Link>
       </div>
     </div>

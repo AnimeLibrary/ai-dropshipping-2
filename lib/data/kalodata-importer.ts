@@ -28,13 +28,26 @@ export interface KalodataRow {
 export function transformKalodataToProduct(row: KalodataRow): Partial<Product> {
   const targetPrice = calculateTargetPrice(row.price)
   
+  // Sanitize imageUrl (Kalodata/CJ often send stringified arrays ["url1", "url2"])
+  let heroImage = row.imageUrl || '/placeholder.png'
+  try {
+    if (typeof heroImage === 'string' && heroImage.startsWith('[')) {
+      const parsed = JSON.parse(heroImage)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        heroImage = parsed[0]
+      }
+    }
+  } catch (e) {
+    console.warn('[Importer] Failed to parse imageUrl:', heroImage)
+  }
+
   const supplier: Supplier = {
     id: `kalodata-${Date.now()}`,
     name: 'Kalodata Supplier',
     url: row.supplierUrl,
-    price: row.price,
-    rating: 4.5, // Default for trending items
-    shippingDays: 7, // Standard for non-AliExpress vetted suppliers
+    price: Number(row.price || 0),
+    rating: 4.5,
+    shippingDays: 7,
     isReliable: true,
     isCheapest: true
   }
@@ -44,14 +57,14 @@ export function transformKalodataToProduct(row: KalodataRow): Partial<Product> {
     slug: row.title.toLowerCase().replace(/\s+/g, '-'),
     title: row.title,
     category: row.category,
-    price: targetPrice,
-    supplierPrice: row.price,
-    heroImage: row.imageUrl,
+    price: Number(targetPrice || 0),
+    supplierPrice: Number(row.price || 0),
+    heroImage: heroImage,
     source: 'kalodata',
-    trendScore: row.trendScore,
+    trendScore: Number(row.trendScore || 0),
     suppliers: [supplier],
     validationStatus: 'pending',
     adAngles: [],
-    tags: [row.category, 'tiktok-shop', 'trending']
+    tags: [row.category, 'tiktok-shop', 'trending'].filter(Boolean) as string[]
   }
 }

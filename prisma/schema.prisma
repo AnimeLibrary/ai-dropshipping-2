@@ -1,7 +1,8 @@
 // prisma/schema.prisma
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -27,6 +28,10 @@ model Product {
   stripeProductId   String?  @unique
   stripePriceId     String?  @unique
   validationStatus  String   @default("pending") // pending, approved, archived
+
+  // CJ Dropshipping
+  cjProductId       String?  // CJ product ID for API lookups
+  cjVariantId       String?  // CJ variant ID for order placement
   
   // Relations
   suppliers         Supplier[]
@@ -113,6 +118,7 @@ model OrderItem {
   quantity      Int      @default(1)
   priceAtSale   Float
   supplierUrl   String?  // The specific URL used for fulfillment
+  cjVariantId   String?  // CJ variant for auto-fulfillment
 
   order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product       Product  @relation(fields: [productId], references: [id])
@@ -166,3 +172,30 @@ model Review {
   @@index([status])
 }
 
+model Referral {
+  id            String        @id @default(cuid())
+  code          String        @unique  // e.g. "VEX-AB3K"
+  ownerId       String        // Clerk user ID
+  ownerEmail    String
+  ownerName     String?
+  creditsEarned Float         @default(0)
+  uses          ReferralUse[]
+  createdAt     DateTime      @default(now())
+
+  @@index([ownerId])
+  @@index([code])
+}
+
+model ReferralUse {
+  id             String   @id @default(cuid())
+  referralId     String
+  referral       Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  buyerEmail     String
+  orderId        String?
+  discountAmount Float    // How much the buyer saved (in $)
+  creditAwarded  Float    // Store credit given to referrer
+  status         String   @default("pending") // pending, confirmed
+  createdAt      DateTime @default(now())
+
+  @@index([referralId])
+}

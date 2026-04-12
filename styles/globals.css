@@ -12,15 +12,15 @@
   --color-border-soft:  #f0ede8;
 
   --color-text-primary:   #0d0d0d;
-  --color-text-secondary: #4a4742;
-  --color-text-muted:     #8b8580;
+  --color-text-secondary: #2e2b28;
+  --color-text-muted:     #5a5551;
   --color-text-inverse:   #ffffff;
 
   /* Accent — warm amber-gold */
-  --color-accent:         #e8823a;
-  --color-accent-hover:   #d4712b;
+  --color-accent:         #c96d22;
+  --color-accent-hover:   #b55e18;
   --color-accent-soft:    #fdf0e6;
-  --color-accent-glow:    rgba(232, 130, 58, 0.15);
+  --color-accent-glow:    rgba(201, 109, 34, 0.15);
 
   /* Semantic */
   --color-success:   #22c55e;
@@ -654,13 +654,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .product-card:hover {
-  transform: translateY(-6px);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-xl);
   border-color: var(--color-accent);
 }
 
 .product-card-image {
-  aspect-ratio: 4/3;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
   background: var(--color-bg-secondary);
   position: relative;
@@ -670,29 +670,49 @@ h1, h2, h3, h4, h5, h6 {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform var(--transition-slow);
+  transition: transform 0.5s ease;
 }
 
 .product-card:hover .product-card-image img {
-  transform: scale(1.05);
+  transform: scale(1.08);
+}
+
+/* Hover overlay "View Product" CTA */
+.product-card-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 16px;
+  opacity: 0;
+  transition: opacity var(--transition-base);
+  backdrop-filter: blur(2px);
+}
+
+.product-card:hover .product-card-overlay {
+  opacity: 1;
 }
 
 .product-card-body {
-  padding: var(--space-5);
+  padding: var(--space-4);
 }
 
 .product-card-title {
   font-family: var(--font-heading);
   font-size: var(--text-base);
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: var(--space-2);
   color: var(--color-text-primary);
+  line-height: 1.3;
 }
 
 .product-card-price {
+  font-family: var(--font-heading);
   font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--color-accent);
+  font-weight: 800;
+  color: var(--color-text-primary);
 }
 
 .product-card-price-original {

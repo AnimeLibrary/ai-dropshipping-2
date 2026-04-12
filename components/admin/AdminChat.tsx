@@ -114,7 +114,7 @@ export default function AdminChat({ isOpen, onClose, selectedProduct }: AdminCha
     } catch (err: any) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: `⚠️ **Agent Error**: ${err.message}\n\nEnsure LM Studio is running at \`http://172.20.10.11:1234\` with the Llama 3.1 8B model loaded.`
+        content: `⚠️ **Agent Error**: ${err.message}\n\nEnsure LM Studio is running and a model is loaded. The system auto-detects your local IP — if you just changed networks (hotspot), restart the dev server (\`npm run dev\`) and try again.`
       }])
     } finally {
       setLoading(false)

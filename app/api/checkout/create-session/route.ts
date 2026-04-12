@@ -1,25 +1,39 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
+import { prisma } from '@/lib/db/prisma'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-04-10' as any
 })
 
-/**
- * STRIPE CHECKOUT SESSION API
- * Handles dynamic 'Surgical' pricing and redirects users to a secure payment page.
- */
+const REFERRAL_DISCOUNT = 0.15 // 15%
+const CREDIT_PER_REFERRAL = 5.00 // $5 store credit for referrer per confirmed order
+
 export async function POST(req: Request) {
   try {
-    const { productId, title, price, imageUrl, bundleItems } = await req.json()
+    const { productId, title, price, imageUrl, bundleItems, referralCode } = await req.json()
 
-    // 1. Margin Floor Check (Backend Safety Valve)
-    // Ensures we NEVER process a payment that doesn't meet our profit rules.
     if (!price || price < 10) {
-        return NextResponse.json({ error: 'Invalid Pricing Model' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid Pricing Model' }, { status: 400 })
     }
 
-    // 2. Create Stripe Checkout Session
+    // ── Referral Code Validation ──────────────────────────────────────────────
+    let finalPrice = price
+    let referralId: string | null = null
+    let discountAmount = 0
+
+    if (referralCode) {
+      const code = referralCode.toUpperCase().trim()
+      const referral = await prisma.referral.findUnique({ where: { code } })
+
+      if (referral) {
+        discountAmount = Math.round(price * REFERRAL_DISCOUNT * 100) / 100
+        finalPrice = Math.round((price - discountAmount) * 100) / 100
+        referralId = referral.id
+      }
+    }
+
+    // ── Stripe Checkout Session ───────────────────────────────────────────────
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'klarna', 'afterpay_clearpay'],
       line_items: [
@@ -27,28 +41,41 @@ export async function POST(req: Request) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: title,
+              name: referralId
+                ? `${title} (15% Referral Discount Applied)`
+                : title,
               images: imageUrl ? [imageUrl] : [],
-              description: bundleItems ? `Includes: ${bundleItems.join(', ')}` : 'Surgical Solution Kit',
+              description: bundleItems
+                ? `Includes: ${bundleItems.join(', ')}`
+                : referralId
+                ? `You saved $${discountAmount.toFixed(2)} with a referral code!`
+                : 'Vexsen Curated Product',
             },
-            unit_amount: Math.round(price * 100), // Stripe uses cents
+            unit_amount: Math.round(finalPrice * 100),
           },
           quantity: 1,
         },
       ],
       mode: 'payment',
       shipping_address_collection: {
-        allowed_countries: ['US', 'CA', 'GB', 'AU'], // Major dropshipping markets
+        allowed_countries: ['US', 'CA', 'GB', 'AU'],
       },
       success_url: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3000'}/`,
       metadata: {
         productId,
-        isBundle: !!bundleItems
+        isBundle: String(!!bundleItems),
+        referralId: referralId || '',
+        discountAmount: String(discountAmount),
+        referralCode: referralCode || '',
       }
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({
+      url: session.url,
+      discountApplied: referralId ? discountAmount : 0,
+      finalPrice,
+    })
   } catch (err: any) {
     console.error('[Stripe Session] Error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })

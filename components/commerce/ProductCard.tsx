@@ -1,101 +1,179 @@
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
-import { Product } from '@/lib/data/products'
+
+interface Product {
+  id: string
+  slug: string
+  title: string
+  category?: string | null
+  niche: string
+  price: number
+  compareAtPrice?: number | null
+  heroImage: string | any
+  shortDescription?: string | null
+  trendScore?: number | null
+  validationStatus?: string
+}
 
 interface Props {
   product: Product
+  index?: number
 }
 
-export default function ProductCard({ product }: Props) {
+export default function ProductCard({ product, index = 0 }: Props) {
+  const savings = product.compareAtPrice
+    ? Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)
+    : null
+
+  const isTrending = product.trendScore && product.trendScore > 80
+  const isNew = index < 3
+
+  let displayImage = product.heroImage || '/placeholder.png'
+  try {
+    if (typeof displayImage === 'string' && displayImage.startsWith('[')) {
+      const parsed = JSON.parse(displayImage)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        displayImage = parsed[0]
+      }
+    }
+  } catch (e) {}
+
   return (
-    <article className="product-card" role="listitem">
-      <Link href={`/products/${product.slug}`} tabIndex={-1} aria-hidden="true">
-        <div className="product-card-image">
-          {product.heroImage ? (
+    <article
+      className="product-card"
+      role="listitem"
+      style={{ position: 'relative', display: 'flex', flexDirection: 'column' }}
+    >
+      <Link href={`/products/${product.slug}`} tabIndex={-1} aria-hidden="true" style={{ display: 'block' }}>
+        <div className="product-card-image" style={{ aspectRatio: '1/1', position: 'relative' }}>
+          {displayImage && displayImage !== '/placeholder.png' ? (
             <Image
-              src={product.heroImage}
+              src={displayImage}
               alt={product.title}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
               style={{ objectFit: 'cover' }}
             />
           ) : (
-            <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: 0 }} />
-          )}
-
-          {/* Validation Badge */}
-          {product.validationStatus === 'approved' && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 'var(--space-3)',
-                left: 'var(--space-3)',
-                background: 'rgba(34,197,94,0.9)',
-                color: 'white',
-                fontSize: '10px',
-                fontWeight: 700,
-                padding: '4px 10px',
-                borderRadius: '999px',
-                letterSpacing: '0.05em',
-                backdropFilter: 'blur(4px)'
-              }}
-            >
-              ✓ VALIDATED
+            <div style={{
+              width: '100%', height: '100%',
+              background: 'linear-gradient(135deg, var(--color-bg-secondary), var(--color-border))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '3rem'
+            }}>
+              🛍️
             </div>
           )}
+
+          {/* Status badges */}
+          <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {isTrending && (
+              <span style={{
+                background: '#dc2626', color: '#fff',
+                fontSize: '10px', fontWeight: 800,
+                padding: '3px 8px', borderRadius: '999px',
+                letterSpacing: '0.06em', textTransform: 'uppercase'
+              }}>🔥 Trending</span>
+            )}
+            {isNew && !isTrending && (
+              <span style={{
+                background: 'var(--color-accent)', color: '#fff',
+                fontSize: '10px', fontWeight: 800,
+                padding: '3px 8px', borderRadius: '999px',
+                letterSpacing: '0.06em', textTransform: 'uppercase'
+              }}>New</span>
+            )}
+            {savings && savings >= 15 && (
+              <span style={{
+                background: 'rgba(0,0,0,0.75)', color: '#fff',
+                fontSize: '10px', fontWeight: 800,
+                padding: '3px 8px', borderRadius: '999px',
+                backdropFilter: 'blur(4px)'
+              }}>-{savings}%</span>
+            )}
+          </div>
+
+          {/* Quick Add overlay on hover */}
+          <div className="product-card-overlay">
+            <span style={{
+              background: 'var(--color-accent)', color: '#fff',
+              padding: '8px 20px', borderRadius: 'var(--radius-md)',
+              fontWeight: 700, fontSize: 'var(--text-sm)'
+            }}>
+              View Product →
+            </span>
+          </div>
         </div>
       </Link>
 
-      <div className="product-card-body">
-        <p
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-text-muted)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            fontWeight: 600,
-            marginBottom: 'var(--space-2)'
-          }}
-        >
-          {product.category}
+      <div className="product-card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Niche tag */}
+        <p style={{
+          fontSize: '0.7rem', color: 'var(--color-accent)',
+          textTransform: 'uppercase', letterSpacing: '0.1em',
+          fontWeight: 700, marginBottom: 4
+        }}>
+          {(product.category || product.niche).replace(/-/g, ' ')}
         </p>
 
-        <h3 className="product-card-title">
-          <Link href={`/products/${product.slug}`}>
+        {/* Title */}
+        <h3 style={{ marginBottom: 6 }}>
+          <Link
+            href={`/products/${product.slug}`}
+            style={{
+              fontFamily: 'var(--font-heading)', fontSize: 'var(--text-base)',
+              fontWeight: 700, color: 'var(--color-text-primary)',
+              display: '-webkit-box', WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3
+            }}
+          >
             {product.title}
           </Link>
         </h3>
 
-        <p
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--color-text-secondary)',
-            marginBottom: 'var(--space-4)',
-            lineHeight: 1.5,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden'
-          }}
-        >
-          {product.shortDescription}
-        </p>
+        {/* Short description */}
+        {product.shortDescription && (
+          <p style={{
+            fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)',
+            lineHeight: 1.5, marginBottom: 10, flex: 1,
+            display: '-webkit-box', WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical', overflow: 'hidden'
+          }}>
+            {product.shortDescription}
+          </p>
+        )}
 
-        <div className="flex-between">
-          <div>
-            <span className="product-card-price">${product.price.toFixed(2)}</span>
+        {/* Stars placeholder */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <span key={i} style={{ color: '#F59E0B', fontSize: '0.75rem' }}>★</span>
+          ))}
+          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>(47+)</span>
+        </div>
+
+        {/* Price row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+            <span style={{
+              fontFamily: 'var(--font-heading)', fontSize: 'var(--text-xl)',
+              fontWeight: 800, color: 'var(--color-text-primary)'
+            }}>
+              ${product.price.toFixed(2)}
+            </span>
             {product.compareAtPrice && (
-              <span className="product-card-price-original">
-                ${product.compareAtPrice.toFixed(2)}
+              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)', textDecoration: 'line-through' }}>
+                ${Number(product.compareAtPrice).toFixed(2)}
               </span>
             )}
           </div>
           <Link
             href={`/products/${product.slug}`}
             className="btn btn-primary btn-sm"
-            aria-label={`View ${product.title}`}
+            aria-label={`Buy ${product.title}`}
           >
-            View Details →
+            Buy
           </Link>
         </div>
       </div>

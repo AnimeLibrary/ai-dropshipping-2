@@ -22,14 +22,30 @@ interface SystemStatus {
   services: { lmStudio: any; stripe: any; database: any }
   envKeys: Record<string, boolean>
 }
+interface Referral {
+  id: string; code: string; ownerEmail: string; ownerName: string | null; creditsEarned: number;
+  uses: { id: string; buyerEmail: string; discountAmount: number; creditAwarded: number; status: string; createdAt: string }[];
+  createdAt: string
+}
 interface ArchivedProduct { id: string; title: string; reason: string }
+
+interface ActionReview {
+  id: string; productSlug: string; rating: number; title: string | null; body: string; authorName: string; createdAt: string
+}
+
+interface SeoCluster {
+  id: string; keyword: string; searchVolume: number; intent: string; targetPageType: string; hasContent: boolean; productCount: number; createdAt: string;
+}
 
 interface Props {
   pendingProducts: Product[]; approvedProducts: Product[]
   liveOrders: Order[]; archivedProducts: ArchivedProduct[]
+  referrals: Referral[]
+  pendingReviews: ActionReview[]
+  seoClusters: SeoCluster[]
 }
 
-type Panel = 'products' | 'orders' | 'safety' | 'health' | 'logs' | 'flow'
+type Panel = 'products' | 'orders' | 'safety' | 'health' | 'logs' | 'flow' | 'referrals' | 'reviews' | 'seo'
 
 // ── Sub-components ───────────────────────────────────────────
 function StatusDot({ ok }: { ok: boolean }) {
@@ -45,22 +61,24 @@ function Tag({ children, color }: { children: React.ReactNode; color: string }) 
 }
 
 const PANEL_COLOR: Record<string, string> = {
-  products:'#7c3aed', orders:'#22c55e', safety:'#f59e0b', health:'#60a5fa', logs:'#f472b6', flow:'#34d399'
+  products:'#7c3aed', orders:'#22c55e', safety:'#f59e0b', health:'#60a5fa', logs:'#f472b6', flow:'#34d399', referrals:'#e8823a', reviews:'#ec4899', seo:'#14b8a6'
 }
 
 // ── Main Dashboard ───────────────────────────────────────────
-export default function AdminDashboardClient({ pendingProducts, approvedProducts, liveOrders, archivedProducts }: Props) {
+export default function AdminDashboardClient({ pendingProducts, approvedProducts, liveOrders, archivedProducts, referrals, pendingReviews, seoClusters }: Props) {
   const [panel, setPanel] = useState<Panel>('products')
   const [pending, setPending]   = useState(pendingProducts)
   const [approved, setApproved] = useState(approvedProducts)
   const [orders]                = useState(liveOrders)
   const [archived]              = useState(archivedProducts)
+  const [reviews, setReviews]   = useState(pendingReviews)
   const [isChatOpen, setChat]   = useState(true)
   const [toast, setToast]       = useState<{ msg: string; type: 'ok'|'err' } | null>(null)
   const [status, setStatus]     = useState<SystemStatus | null>(null)
   const [logs, setLogs]         = useState<LogEntry[]>([])
   const [logLevel, setLogLevel] = useState<string>('')
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [cjMapping, setCjMapping] = useState<Record<string, { vId: string, pId: string }>>({})
 
   const showToast = (msg: string, type: 'ok'|'err' = 'ok') => {
     setToast({ msg, type })
@@ -97,10 +115,18 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   const handleProductAction = async (productId: string, action: 'approve' | 'reject') => {
     setLoadingId(productId)
     try {
+      const payload = { 
+        action, 
+        notes: '',
+        ...(cjMapping[productId] && {
+          cjVariantId: cjMapping[productId].vId,
+          cjProductId: cjMapping[productId].pId
+        })
+      }
       const res = await fetch(`/api/admin/products/${productId}/status`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, notes: '' })
+        body: JSON.stringify(payload)
       })
       if (!res.ok) throw new Error('Request failed')
       if (action === 'approve') {
@@ -116,11 +142,60 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
     finally { setLoadingId(null) }
   }
 
+  const handleRefund = async (orderId: string, action: 'refund' | 'store_credit') => {
+    setLoadingId(orderId)
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/refund`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Refund failed')
+      
+      showToast(data.message)
+      // Optimistically update order status locally
+      const updatedStatus = action === 'refund' ? 'refunded' : 'credited'
+      // To properly update, we normally might force a refetch or update state:
+      const orderIndex = orders.findIndex(o => o.id === orderId)
+      if (orderIndex > -1) {
+        orders[orderIndex].status = updatedStatus
+      }
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleReviewAction = async (reviewId: string, action: 'approve' | 'reject') => {
+    setLoadingId(reviewId)
+    try {
+      const res = await fetch(`/api/admin/reviews/${reviewId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update review')
+      
+      setReviews(prev => prev.filter(r => r.id !== reviewId))
+      showToast(data.message, action === 'approve' ? 'ok' : 'err')
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   // ── Sidebar ─────────────────────────────────────────────────
   const navItems: { id: Panel; label: string; badge?: number }[] = [
     { id: 'products', label: '📦 Products',    badge: pending.length },
     { id: 'orders',   label: '🛒 Orders',      badge: orders.filter(o=>o.status==='processing').length },
     { id: 'safety',   label: '🛡️ Safety Valve', badge: archived.length },
+    { id: 'referrals', label: '🎁 Referrals',   badge: referrals.filter(r=>r.uses.some(u=>u.status==='pending')).length || undefined },
+    { id: 'reviews',  label: '💬 UGC Reviews',  badge: reviews.length || undefined },
+    { id: 'seo',      label: '📈 SEO Fleet',    badge: seoClusters.filter(c => !c.hasContent).length || undefined },
     { id: 'health',   label: '💚 System Health' },
     { id: 'logs',     label: '📋 Logs',         badge: logs.filter(l=>l.level==='error').length || undefined },
     { id: 'flow',     label: '🔀 Data Flow' },
@@ -201,13 +276,31 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                           <span>Trend: <strong style={{color:'#60a5fa'}}>{p.trendScore}/100</strong></span>
                         </div>
                       </div>
-                      <div style={{ display:'flex', gap:8, flexShrink:0 }}>
-                        <button onClick={()=>handleProductAction(p.id,'approve')} disabled={loadingId===p.id} style={{ background:'#22c55e22', border:'1px solid #22c55e44', color:'#4ade80', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===p.id?0.5:1 }}>
-                          {loadingId===p.id?'…':'✅ Approve'}
-                        </button>
-                        <button onClick={()=>handleProductAction(p.id,'reject')} disabled={loadingId===p.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
-                          ✕ Reject
-                        </button>
+                      <div style={{ display:'flex', gap:8, flexShrink:0, flexDirection: 'column', alignItems: 'flex-end' }}>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 220 }}>
+                          <input 
+                            placeholder="CJ Variant ID" 
+                            value={cjMapping[p.id]?.vId || ''} 
+                            onChange={e => setCjMapping(prev => ({ ...prev, [p.id]: { ...prev[p.id], vId: e.target.value } }))}
+                            style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 11 }} 
+                          />
+                          <input 
+                            placeholder="CJ Product ID" 
+                            value={cjMapping[p.id]?.pId || ''} 
+                            onChange={e => setCjMapping(prev => ({ ...prev, [p.id]: { ...prev[p.id], pId: e.target.value } }))}
+                            style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 11 }} 
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={()=>handleProductAction(p.id,'approve')} disabled={loadingId===p.id} style={{ background:'#22c55e22', border:'1px solid #22c55e44', color:'#4ade80', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===p.id?0.5:1 }}>
+                            {loadingId===p.id?'…':'✅ Approve'}
+                          </button>
+                          <button onClick={()=>handleProductAction(p.id,'reject')} disabled={loadingId===p.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
+                            ✕ Reject
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -247,10 +340,20 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                   </div>
                   <div style={{ textAlign:'right', display:'flex', alignItems:'center', gap:12 }}>
                     <span style={{ fontWeight:800, color:'#4ade80', fontSize:15 }}>${o.totalAmount.toFixed(2)}</span>
-                    <Tag color={ o.status==='shipped'?'#22c55e': o.status==='processing'?'#f59e0b':'#ef4444' }>{o.status.toUpperCase()}</Tag>
+                    <Tag color={ o.status==='shipped'?'#22c55e': o.status==='processing'?'#f59e0b': o.status==='refunded'?'#ef4444':'#60a5fa' }>{o.status.toUpperCase()}</Tag>
                   </div>
                 </div>
-                {o.trackingNumber && <div style={{ marginTop:8, fontSize:11, color:'#6b7280' }}>Tracking: {o.trackingNumber}</div>}
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginTop:8 }}>
+                  <div>
+                    {o.trackingNumber && <div style={{ fontSize:11, color:'#6b7280' }}>Tracking: {o.trackingNumber}</div>}
+                  </div>
+                  {(o.status === 'processing' || o.status === 'shipped') && (
+                    <div style={{ display:'flex', gap:8 }}>
+                      <button onClick={()=>handleRefund(o.id,'store_credit')} disabled={loadingId===o.id} style={{ background:'#0c0c0f', border:'1px solid #1e1e2e', color:'#60a5fa', borderRadius:4, padding:'4px 10px', fontSize:11, cursor:'pointer' }}>Store Credit</button>
+                      <button onClick={()=>handleRefund(o.id,'refund')} disabled={loadingId===o.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:4, padding:'4px 10px', fontSize:11, cursor:'pointer' }}>Refund</button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -273,6 +376,158 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── REFERRALS PANEL ── */}
+        {panel === 'referrals' && (
+          <div>
+            <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px', color: PANEL_COLOR.referrals }}>🎁 Referral Network</h1>
+            <p style={{ color:'#6b7280', marginBottom:20, fontSize:12 }}>Track generated promo codes, usage, and store credits owed to referrers.</p>
+            {referrals.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>No users have generated referral codes yet.</div>}
+            {referrals.map(r => (
+              <div key={r.id} style={{ ...card, borderColor: '#e8823a33' }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontWeight:900, fontSize:16, color:'#fdf0e6', letterSpacing:'0.05em' }}>{r.code}</div>
+                    <div style={{ fontSize:12, color:'#a8a29e', marginTop:4 }}>Owner: {r.ownerName || 'Unknown'} &lt;{r.ownerEmail}&gt;</div>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    <div style={{ fontSize:12, color:'#a8a29e', marginBottom: 2 }}>Credits Earned</div>
+                    <div style={{ fontSize:18, fontWeight:800, color:'#4ade80' }}>${r.creditsEarned.toFixed(2)}</div>
+                  </div>
+                </div>
+                
+                {r.uses.length > 0 ? (
+                  <div style={{ background: '#0a0a0a', borderRadius: 8, padding: 12, border: '1px solid #1f1f1f' }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Usage History</div>
+                    {r.uses.map(u => (
+                      <div key={u.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding: '6px 0', borderBottom: '1px solid #111' }}>
+                        <div>
+                          <div style={{ fontSize:12, color:'#f5f5f4' }}>{u.buyerEmail}</div>
+                          <div style={{ fontSize:10, color:'#57534e' }}>{new Date(u.createdAt).toLocaleDateString()}</div>
+                        </div>
+                        <div style={{ textAlign:'right' }}>
+                          <span style={{ fontSize:11, color:'#c96d22', marginRight:12 }}>Buyer Saved: ${u.discountAmount.toFixed(2)}</span>
+                          <Tag color={u.status === 'confirmed' ? '#22c55e' : '#f59e0b'}>{u.status.toUpperCase()}</Tag>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize:12, color:'#57534e', fontStyle:'italic' }}>No uses yet.</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── REVIEWS MODERATION PANEL ── */}
+        {panel === 'reviews' && (
+          <div>
+            <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px', color: PANEL_COLOR.reviews }}>💬 Review Moderation</h1>
+            <p style={{ color:'#6b7280', marginBottom:20, fontSize:12 }}>User-generated content requires admin approval before appearing on the live product pages.</p>
+            {reviews.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>Zero pending reviews in the queue.</div>}
+            
+            <div style={{ display: 'grid', gap: 16 }}>
+              {reviews.map(r => (
+                <div key={r.id} style={{ ...card, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                        <span style={{ fontSize:14, fontWeight:800, color:'#fdf0e6' }}>{r.authorName}</span>
+                        <div style={{ display: 'flex', gap: 2, color: '#f59e0b', fontSize: 13 }}>
+                          {Array.from({ length: r.rating }).map((_, i) => <span key={i}>★</span>)}
+                          {Array.from({ length: 5 - r.rating }).map((_, i) => <span key={i} style={{ color: '#2e2e4e' }}>★</span>)}
+                        </div>
+                      </div>
+                      <div style={{ fontSize:11, color:'#6b7280' }}>Product Slug: <a href={`/products/${r.productSlug}`} target="_blank" style={{ color: '#60a5fa', textDecoration:'none' }}>{r.productSlug}</a></div>
+                    </div>
+                    <div style={{ fontSize:11, color:'#6b7280' }}>{new Date(r.createdAt).toLocaleString()}</div>
+                  </div>
+
+                  <div style={{ background: '#0a0a0a', padding: 12, borderRadius: 8, border: '1px solid #1f1f1f' }}>
+                    {r.title && <h4 style={{ margin: '0 0 4px', fontSize: 13, color: '#e2e8f0' }}>"{r.title}"</h4>}
+                    <p style={{ margin: 0, fontSize: 13, color: '#a8a29e', lineHeight: 1.5 }}>"{r.body}"</p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button onClick={()=>handleReviewAction(r.id, 'reject')} disabled={loadingId===r.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
+                      🗑️ Reject & Delete
+                    </button>
+                    <button onClick={()=>handleReviewAction(r.id, 'approve')} disabled={loadingId===r.id} style={{ background:'#22c55e22', border:'1px solid #22c55e44', color:'#4ade80', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
+                      ✅ Approve to Store
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── SEO FLEET STATUS PANEL ── */}
+        {panel === 'seo' && (
+          <div>
+            <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px', color: PANEL_COLOR.seo }}>📈 SEO Fleet Status</h1>
+            <p style={{ color:'#6b7280', marginBottom:20, fontSize:12 }}>
+              Track all programmatic SEO pages and internal keyword clusters mapped to your drop-shipping products.
+            </p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginBottom: 24 }}>
+              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#fdf0e6' }}>{seoClusters.length}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Total Clusters</div>
+              </div>
+              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#34d399' }}>{seoClusters.filter(c => c.hasContent).length}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Generated Guides</div>
+              </div>
+              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center' }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#f59e0b' }}>{seoClusters.reduce((sum, c) => sum + c.productCount, 0)}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Products Mapped</div>
+              </div>
+            </div>
+
+            <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12 }}>
+                <thead style={{ background: '#0a0a0f', borderBottom: '1px solid #1e1e2e' }}>
+                  <tr>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>KEYWORD CLUSTER</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>INTENT / TYPE</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>VOL</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>PRODUCTS</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600, textAlign: 'right' }}>STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {seoClusters.map((c, i) => (
+                    <tr key={c.id} style={{ borderBottom: i === seoClusters.length - 1 ? 'none' : '1px solid #1e1e2e' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 600, color: '#fdf0e6' }}>{c.keyword}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <Tag color="#7c3aed">{c.intent}</Tag>
+                        <span style={{ color:'#6b7280', marginLeft: 6 }}>{c.targetPageType}</span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#a78bfa' }}>{c.searchVolume.toLocaleString()}</td>
+                      <td style={{ padding: '12px 16px', color: '#a8a29e' }}>{c.productCount} mapped</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        {c.hasContent ? (
+                          <Tag color="#22c55e">✅ Live</Tag>
+                        ) : (
+                          <Tag color="#f59e0b">⏳ Awaiting AI</Tag>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {seoClusters.length === 0 && (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', color: '#4a4a6a' }}>
+                        No keyword clusters found. Add products to trigger semantic clustering.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

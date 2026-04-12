@@ -7,11 +7,12 @@ import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
 import { useTheme } from './ThemeProvider'
 
 const NAV_LINKS = [
-  { href: '/collections', label: 'Collections' },
+  { href: '/collections', label: 'Shop' },
   { href: '/guides', label: 'Guides' },
   { href: '/problems', label: 'Problems' },
-  { href: '/solutions', label: 'Solutions' },
   { href: '/bundles', label: 'Bundles' },
+  { href: '/referral', label: '🎁 Refer & Earn' },
+  { href: '/about', label: 'Our Story' },
 ]
 
 export default function Navbar() {

@@ -7,10 +7,11 @@
 const CJ_BASE = 'https://developers.cjdropshipping.com/api2.0/v1'
 
 export class CJService {
-  private email = process.env.CJ_EMAIL || ''
-  private apiKey = process.env.CJ_API_KEY || ''
   private accessToken: string | null = null
   private tokenExpiry: number = 0
+
+  private get email() { return process.env.CJ_EMAIL || 'brannenguidry28@gmail.com' }
+  private get apiKey() { return process.env.CJ_API_KEY || 'CJ5319398@api@131aed8ed9784c3296a47b26c31585b3' }
 
   // ─── AUTH ────────────────────────────────────────────────────
   private async getAccessToken(): Promise<string> {

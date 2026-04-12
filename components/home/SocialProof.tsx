@@ -61,7 +61,7 @@ export default function SocialProof() {
           ★ Real Results
         </span>
         <h2 className="heading-lg">
-          Before & After — From People Who Found the Fix
+          Before & After: From People Who Found the Fix
         </h2>
         <p style={{ color: 'var(--color-text-secondary)', marginTop: 'var(--space-3)', maxWidth: 480, margin: 'var(--space-3) auto 0' }}>
           Not reviews. Outcomes. Real people, real before states, real timelines.

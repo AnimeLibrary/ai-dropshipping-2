@@ -10,22 +10,48 @@ interface CheckoutButtonProps {
   bundleItems?: string[]
   variant?: 'primary' | 'outline'
   className?: string
+  priceId?: string
+  productName?: string
 }
 
-/**
- * SURGICAL CHECKOUT BUTTON
- * High-conversion trigger that initiates the Stripe Checkout flow.
- */
-export default function CheckoutButton({ 
-  productId, 
-  title, 
-  price, 
-  imageUrl, 
+export default function CheckoutButton({
+  productId,
+  title,
+  price,
+  imageUrl,
   bundleItems,
   variant = 'primary',
-  className = ''
+  className = '',
+  priceId,
+  productName,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false)
+  const [promoCode, setPromoCode] = useState('')
+  const [promoStatus, setPromoStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle')
+  const [discount, setDiscount] = useState(0)
+  const [showPromo, setShowPromo] = useState(false)
+
+  const resolvedTitle = productName || title || 'Product'
+  const finalPrice = discount > 0 ? Math.round((price - discount) * 100) / 100 : price
+
+  const applyPromo = async () => {
+    if (!promoCode.trim()) return
+    setPromoStatus('checking')
+    try {
+      const res = await fetch(`/api/referral/validate/${promoCode.trim().toUpperCase()}`)
+      const data = await res.json()
+      if (data.valid) {
+        const saved = Math.round(price * 0.15 * 100) / 100
+        setDiscount(saved)
+        setPromoStatus('valid')
+      } else {
+        setDiscount(0)
+        setPromoStatus('invalid')
+      }
+    } catch {
+      setPromoStatus('invalid')
+    }
+  }
 
   const handleCheckout = async () => {
     setLoading(true)
@@ -33,11 +59,16 @@ export default function CheckoutButton({
       const res = await fetch('/api/checkout/create-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId, title, price, imageUrl, bundleItems })
+        body: JSON.stringify({
+          productId,
+          title: resolvedTitle,
+          price,
+          imageUrl,
+          bundleItems,
+          referralCode: promoStatus === 'valid' ? promoCode.trim().toUpperCase() : undefined,
+        })
       })
-
       const data = await res.json()
-      
       if (data.url) {
         window.location.href = data.url
       } else {
@@ -51,30 +82,87 @@ export default function CheckoutButton({
     }
   }
 
-  const baseStyles = "px-8 py-4 rounded-xl font-bold transition-all transform active:scale-95 flex items-center justify-center gap-2 "
-  const variantStyles = variant === 'primary' 
-    ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg hover:shadow-purple-500/20"
-    : "border-2 border-purple-500 text-purple-400 hover:bg-purple-500/10"
-
   return (
-    <button
-      onClick={handleCheckout}
-      disabled={loading}
-      className={baseStyles + variantStyles + " " + className}
-    >
-      {loading ? (
-        <span className="flex items-center gap-2">
-            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    <div style={{ width: '100%' }}>
+      {/* Buy Button */}
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className={`btn btn-primary btn-lg ${className}`}
+        style={{ width: '100%', position: 'relative' }}
+      >
+        {loading ? (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+            <svg style={{ animation: 'spin 0.8s linear infinite', width: 18, height: 18 }} fill="none" viewBox="0 0 24 24">
+              <circle style={{ opacity: 0.25 }} cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path style={{ opacity: 0.75 }} fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Redirecting...
-        </span>
-      ) : (
-        <>
-            ⚡ {bundleItems ? 'Claim This Bundle' : 'Get Solution Now'}
-        </>
-      )}
-    </button>
+            Redirecting to checkout...
+          </span>
+        ) : (
+          <>
+            ⚡ {bundleItems ? 'Claim This Bundle' : `Buy Now${discount > 0 ? ` — $${finalPrice.toFixed(2)}` : ''}`}
+          </>
+        )}
+      </button>
+
+      {/* Promo Code Toggle */}
+      <div style={{ marginTop: 'var(--space-3)' }}>
+        {!showPromo ? (
+          <button
+            onClick={() => setShowPromo(true)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)',
+              textDecoration: 'underline', padding: 0, fontFamily: 'var(--font-body)'
+            }}
+          >
+            Have a referral / promo code?
+          </button>
+        ) : (
+          <div>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'stretch' }}>
+              <input
+                type="text"
+                placeholder="Enter promo code…"
+                value={promoCode}
+                onChange={e => {
+                  setPromoCode(e.target.value.toUpperCase())
+                  setPromoStatus('idle')
+                  setDiscount(0)
+                }}
+                onKeyDown={e => e.key === 'Enter' && applyPromo()}
+                style={{
+                  flex: 1, padding: '10px 14px',
+                  border: `1px solid ${promoStatus === 'valid' ? 'var(--color-success)' : promoStatus === 'invalid' ? '#ef4444' : 'var(--color-border)'}`,
+                  borderRadius: 'var(--radius-md)', background: 'var(--color-bg)',
+                  color: 'var(--color-text-primary)', fontSize: 'var(--text-sm)',
+                  fontFamily: 'var(--font-mono)', outline: 'none', letterSpacing: '0.05em'
+                }}
+              />
+              <button
+                onClick={applyPromo}
+                disabled={promoStatus === 'checking' || !promoCode.trim()}
+                className="btn btn-secondary btn-sm"
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {promoStatus === 'checking' ? '...' : 'Apply'}
+              </button>
+            </div>
+
+            {promoStatus === 'valid' && (
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', fontWeight: 700, marginTop: 6 }}>
+                ✓ Code applied — 15% off! You save ${discount.toFixed(2)}
+              </p>
+            )}
+            {promoStatus === 'invalid' && (
+              <p style={{ fontSize: 'var(--text-xs)', color: '#ef4444', marginTop: 6 }}>
+                ✗ Invalid code. Check your referral link and try again.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   )
 }

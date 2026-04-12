@@ -15,6 +15,7 @@ function toEmotionalQuestion(cluster: KeywordCluster): string {
     return `Why ${cluster.painPoint.toLowerCase().replace(/^why /i, '')}?`
   }
   // Fallback: capitalize the keyword as-is
+  if (!cluster.keyword) return 'How can we help?'
   return cluster.keyword.charAt(0).toUpperCase() + cluster.keyword.slice(1) + '?'
 }
 

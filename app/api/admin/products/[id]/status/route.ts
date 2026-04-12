@@ -9,8 +9,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const { id } = params
-  const body = await req.json() as { action: Action; notes?: string }
-  const { action, notes } = body
+  const body = await req.json() as { action: Action; notes?: string; cjVariantId?: string; cjProductId?: string }
+  const { action, notes, cjVariantId, cjProductId } = body
 
   if (!['approve', 'queue', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
@@ -63,7 +63,9 @@ export async function POST(
     data: { 
       validationStatus: statusMap[action],
       ...(stripeProductId && { stripeProductId }),
-      ...(stripePriceId && { stripePriceId })
+      ...(stripePriceId && { stripePriceId }),
+      ...(cjVariantId && { cjVariantId }),
+      ...(cjProductId && { cjProductId })
     }
   })
 

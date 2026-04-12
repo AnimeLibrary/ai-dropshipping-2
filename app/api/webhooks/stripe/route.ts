@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { headers } from 'next/headers'
 import { prisma } from '@/lib/db/prisma'
+import { pushOrderToCJ } from '@/lib/cj-dropshipping'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-04-10' as any
@@ -60,21 +61,37 @@ export async function POST(req: Request) {
           customerPhone: session.customer_details?.phone || null,
           totalAmount: (session.amount_total || 0) / 100,
           status: 'processing',
-          items: {
-            create: lineItems.map(item => {
+          orderItems: {
+            create: await Promise.all(lineItems.map(async (item) => {
               const stripeProduct = item.price?.product as Stripe.Product | undefined
+              const internalId = stripeProduct?.metadata?.productId || 'unknown'
+              
+              // Look up CJ variant ID from our product record for auto-fulfillment
+              let cjVariantId: string | null = null
+              if (internalId !== 'unknown') {
+                const dbProduct = await prisma.product.findUnique({
+                  where: { id: internalId },
+                  select: { cjVariantId: true }
+                })
+                cjVariantId = dbProduct?.cjVariantId || null
+              }
+
               return {
-                productId: stripeProduct?.metadata?.internalProductId || 'unknown',
+                productId: internalId,
                 quantity: item.quantity || 1,
                 priceAtSale: (item.amount_total || 0) / 100,
                 supplierUrl: stripeProduct?.metadata?.supplierUrl || null,
+                cjVariantId,
               }
-            })
+            }))
           }
         }
       })
 
       console.log(`[Webhook] ✅ Order created: ${order.id} for ${order.customerName}`)
+
+      // Trigger asynchronous background fulfillment to CJ Dropshipping
+      pushOrderToCJ(order.id, session)
 
       // Mark event as processed (idempotency)
       await prisma.processedEvent.create({

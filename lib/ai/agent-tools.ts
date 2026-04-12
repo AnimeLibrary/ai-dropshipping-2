@@ -1,6 +1,6 @@
-import { PrismaClient } from '@prisma/client'
 import { calculateTargetPrice, calculateProfitStats } from '@/lib/utils/pricing'
 import { prisma } from '@/lib/db/prisma'
+import { cj } from '@/lib/services/cj-service'
 
 // ============================================================
 // TOOL SCHEMA DEFINITIONS (sent to Llama 3.1 8B)
@@ -111,6 +111,52 @@ export const AGENT_TOOLS = [
       description: 'Returns live store metrics: order count, revenue, product pipeline status.',
       parameters: { type: 'object', properties: {} }
     }
+  },
+  // ─── CJ DROPSHIPPING TOOLS ──────────────────────────────────
+  {
+    type: 'function',
+    function: {
+      name: 'search_cj_products',
+      description: 'Search CJ Dropshipping for products by keyword. Returns product names, images, prices, and CJ product IDs. Use this when the user wants to find products to sell, e.g. "find me a back pain product" or "search CJ for LED lights".',
+      parameters: {
+        type: 'object',
+        properties: {
+          keyword: { type: 'string', description: 'Search keyword, e.g. "posture corrector" or "LED strip lights"' },
+          count: { type: 'number', description: 'Number of results to return (default 5, max 20)' }
+        },
+        required: ['keyword']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'import_cj_product',
+      description: 'Import a specific CJ Dropshipping product into the store database by its CJ product ID. Pulls all details (images, variants, pricing) from the CJ API and creates a pending product ready for approval. Use after search_cj_products when the user picks a product.',
+      parameters: {
+        type: 'object',
+        properties: {
+          cj_product_id: { type: 'string', description: 'The CJ product ID (pid) to import' },
+          niche: { type: 'string', description: 'What niche/category to assign this product to' }
+        },
+        required: ['cj_product_id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_cj_shipping',
+      description: 'Check shipping options and costs for a CJ product to a specific country. Use when the user asks about shipping times or costs.',
+      parameters: {
+        type: 'object',
+        properties: {
+          cj_product_id: { type: 'string', description: 'The CJ product ID' },
+          country: { type: 'string', description: 'Target country code, e.g. "US", "GB", "CA"' }
+        },
+        required: ['cj_product_id']
+      }
+    }
   }
 ]
 
@@ -137,6 +183,9 @@ export async function executeTool(name: string, args: Record<string, any>): Prom
       case 'get_store_metrics':     return await toolGetMetrics()
       case 'scrape_url':            return await toolScrapeUrl(args.url)
       case 'add_product_manual':    return await toolAddProductManual(args.title, args.supplierPrice, args.niche, args.source)
+      case 'search_cj_products':    return await toolSearchCJ(args.keyword, args.count)
+      case 'import_cj_product':     return await toolImportCJ(args.cj_product_id, args.niche)
+      case 'get_cj_shipping':       return await toolGetCJShipping(args.cj_product_id, args.country)
       default:
         return { success: false, error: `Unknown tool: ${name}` }
     }
@@ -182,6 +231,7 @@ async function toolAddProductManual(title: string, supplierPrice: number = 15.00
     const product = await prisma.product.create({
       data: {
         title,
+        slug: `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}-${Date.now()}`,
         price: calculateTargetPrice(safePrice),
         supplierPrice: safePrice,
         niche: niche || 'general',
@@ -201,13 +251,13 @@ async function toolImportCSV(csvText: string, source: 'kalodata' | 'minea'): Pro
   const lines = csvText.trim().split('\n').filter(Boolean)
   if (lines.length < 2) return { success: false, error: 'CSV has no data rows.' }
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[\s"]/g, '_'))
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[\s\"]/g, '_'))
   const inserted: string[] = []
   const skipped: string[] = []
 
   for (let i = 1; i < lines.length; i++) {
     // Handle quoted CSV values properly
-    const vals = lines[i].match(/(".*?"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g)
+    const vals = lines[i].match(/(\".*?\"|[^,]+|(?<=,)(?=,)|(?<=,)$|^(?=,))/g)
       ?.map(v => v.trim().replace(/^"|"$/g, '')) || lines[i].split(',')
 
     const row: Record<string, string> = {}
@@ -328,6 +378,7 @@ async function toolAnalyzeProduct(productId: string): Promise<ToolResult> {
       estimatedShipping: `${product.suppliers[0].shippingDays} days`,
       verified: product.suppliers.every(s => s.isReliable) ? '✅ Marked reliable' : '⚠️ Verify manually before approval'
     } : { note: '⚠️ No supplier data yet. Will be needed before Stripe sync.' },
+    cjLinked: product.cjProductId ? `✅ CJ Product: ${product.cjProductId}` : '❌ No CJ product linked',
     aiVerdict: verdict,
     aiReasoning: verdict === 'APPROVE'
       ? `Passes all financial guardrails ($${profit.toFixed(2)} profit, ${marginPercentage.toFixed(1)}% margin). Niche saturation at ${saturationScore}/100 — manageable. Trend score ${product.trendScore}/100 indicates active demand. RECOMMENDED FOR IMMEDIATE APPROVAL.`
@@ -417,7 +468,7 @@ async function toolRejectProduct(productId: string, reason: string): Promise<Too
 async function toolListPending(): Promise<ToolResult> {
   const products = await prisma.product.findMany({
     where: { validationStatus: 'pending' },
-    select: { id: true, title: true, niche: true, price: true, supplierPrice: true, trendScore: true, source: true },
+    select: { id: true, title: true, niche: true, price: true, supplierPrice: true, trendScore: true, source: true, cjProductId: true },
     orderBy: { trendScore: 'desc' }
   })
   return {
@@ -439,7 +490,147 @@ async function toolGetMetrics(): Promise<ToolResult> {
     data: {
       orders: totalOrders,
       totalRevenue: `$${(revenueAgg._sum.totalAmount || 0).toFixed(2)}`,
-      pipeline: { pending: pendingCount, approved: approvedCount, archived: archivedCount }
+      pipeline: { pending: pendingCount, approved: approvedCount, archived: archivedCount },
+      cjConfigured: cj.isConfigured() ? '✅ CJ Dropshipping API connected' : '❌ CJ API not configured (add CJ_EMAIL + CJ_API_KEY to .env)'
     }
+  }
+}
+
+// ─── CJ DROPSHIPPING TOOL IMPLEMENTATIONS ────────────────────
+
+async function toolSearchCJ(keyword: string, count: number = 5): Promise<ToolResult> {
+  if (!cj.isConfigured()) {
+    return { success: false, error: 'CJ Dropshipping API not configured. Add CJ_EMAIL and CJ_API_KEY to your .env file. Sign up free at cjdropshipping.com' }
+  }
+
+  try {
+    const results = await cj.searchProduct(keyword)
+    const limited = results.slice(0, count || 5)
+
+    const products = limited.map((p: any, i: number) => ({
+      rank: i + 1,
+      name: p.productNameEn || p.productName || 'Unknown',
+      cjProductId: p.pid,
+      price: `$${(p.sellPrice || 0).toFixed(2)}`,
+      image: p.productImage || '',
+      category: p.categoryName || 'general',
+      variants: p.variantCount || 1,
+      importCommand: `To import this: call import_cj_product with cj_product_id="${p.pid}"`
+    }))
+
+    return {
+      success: true,
+      data: {
+        keyword,
+        resultCount: products.length,
+        products,
+        nextStep: `Tell the user which products look interesting. When they pick one, call import_cj_product with the cj_product_id to add it to the store.`
+      }
+    }
+  } catch (err: any) {
+    return { success: false, error: `CJ search failed: ${err.message}` }
+  }
+}
+
+async function toolImportCJ(cjProductId: string, niche: string = 'general'): Promise<ToolResult> {
+  if (!cj.isConfigured()) {
+    return { success: false, error: 'CJ Dropshipping API not configured. Add CJ_EMAIL and CJ_API_KEY to your .env file.' }
+  }
+
+  try {
+    const cjProduct = await cj.getProduct(cjProductId)
+    if (!cjProduct) {
+      return { success: false, error: `CJ product ${cjProductId} not found.` }
+    }
+
+    const title = cjProduct.productNameEn || cjProduct.productName || 'CJ Product'
+    const rawPrice = String(cjProduct.sellPrice || cjProduct.productPrice || 10)
+    const parsedPrice = parseFloat(rawPrice.split('-')[0])
+    const supplierPrice = isNaN(parsedPrice) ? 10 : parsedPrice
+    const retailPrice = calculateTargetPrice(supplierPrice)
+    const image = cjProduct.productImage || ''
+    
+    // Get the first/default variant ID for order placement
+    const firstVariant = cjProduct.variants?.[0]
+    const variantId = firstVariant?.vid || ''
+
+    const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}-${Date.now()}`
+
+    const product = await prisma.product.create({
+      data: {
+        slug,
+        title,
+        niche: niche || 'general',
+        price: retailPrice,
+        supplierPrice,
+        heroImage: image || null,
+        source: 'cjdropshipping',
+        trendScore: 80,
+        validationStatus: 'pending',
+        cjProductId: cjProductId,
+        cjVariantId: variantId,
+        shortDescription: `Sourced from CJ Dropshipping. Supplier price: $${supplierPrice.toFixed(2)}.`,
+        suppliers: {
+          create: [{
+            name: 'CJ Dropshipping',
+            url: `https://cjdropshipping.com/product-p-${cjProductId}.html`,
+            price: supplierPrice,
+            shippingDays: 10,
+            isReliable: true,
+            isCheapest: true,
+          }]
+        }
+      }
+    })
+
+    // Auto-analyze
+    const analysis = await toolAnalyzeProduct(product.id)
+
+    return {
+      success: true,
+      data: {
+        message: `✅ "${title}" imported from CJ Dropshipping and analyzed.`,
+        productId: product.id,
+        cjProductId,
+        cjVariantId: variantId,
+        supplierPrice: `$${supplierPrice.toFixed(2)}`,
+        retailPrice: `$${retailPrice.toFixed(2)}`,
+        image,
+        analysis: analysis.data,
+        nextStep: `Product is pending approval. Reply "approve ${product.id}" to go live or "reject ${product.id} [reason]" to discard.`
+      }
+    }
+  } catch (err: any) {
+    return { success: false, error: `CJ import failed: ${err.message}` }
+  }
+}
+
+async function toolGetCJShipping(cjProductId: string, country: string = 'US'): Promise<ToolResult> {
+  if (!cj.isConfigured()) {
+    return { success: false, error: 'CJ Dropshipping API not configured.' }
+  }
+
+  try {
+    const options = await cj.getShippingOptions(cjProductId, country)
+    const formatted = options.map((o: any) => ({
+      method: o.logisticName || 'Standard',
+      cost: `$${(o.logisticPrice || 0).toFixed(2)}`,
+      estimatedDays: `${o.logisticAging || 'Unknown'} days`,
+      trackable: o.trackStatus ? 'Yes' : 'No'
+    }))
+
+    return {
+      success: true,
+      data: {
+        productId: cjProductId,
+        country,
+        shippingOptions: formatted,
+        recommendation: formatted.length > 0
+          ? `Cheapest option: ${formatted[0].method} at ${formatted[0].cost} (${formatted[0].estimatedDays})`
+          : 'No shipping options available for this country.'
+      }
+    }
+  } catch (err: any) {
+    return { success: false, error: `CJ shipping check failed: ${err.message}` }
   }
 }
