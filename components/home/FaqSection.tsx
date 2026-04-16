@@ -77,7 +77,9 @@ export default function FaqSection() {
               role="region"
               aria-labelledby={`faq-btn-${i}`}
             >
-              <div className="faq-answer-inner">{faq.a}</div>
+              <div className="faq-answer-inner">
+                <div className="faq-answer-content">{faq.a}</div>
+              </div>
             </div>
           </div>
         ))}

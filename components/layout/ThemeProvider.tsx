@@ -18,12 +18,23 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
     const stored = localStorage.getItem('theme') as Theme | null
     const system = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
     const initial = stored ?? system
     setTheme(initial)
     document.documentElement.setAttribute('data-theme', initial)
     setMounted(true)
+
+    // Sync theme across tabs
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'theme' && (e.newValue === 'light' || e.newValue === 'dark')) {
+        setTheme(e.newValue as Theme)
+        document.documentElement.setAttribute('data-theme', e.newValue)
+      }
+    }
+    window.addEventListener('storage', onStorage)
 
     // Global scroll reveal logic
     const observer = new IntersectionObserver((entries) => {
@@ -44,23 +55,31 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     setupObserver()
 
     // Catch client-side route changes rendering new .reveal elements
-    const mutObserver = new MutationObserver(setupObserver)
+    let debounceTimer: ReturnType<typeof setTimeout>
+    const mutObserver = new MutationObserver(() => {
+      clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(setupObserver, 100)
+    })
     mutObserver.observe(document.body, { childList: true, subtree: true })
 
     return () => {
+      window.removeEventListener('storage', onStorage)
       observer.disconnect()
       mutObserver.disconnect()
+      clearTimeout(debounceTimer)
     }
   }, [])
 
   const toggle = () => {
+    if (typeof window === 'undefined') return
     const next = theme === 'light' ? 'dark' : 'light'
     setTheme(next)
     document.documentElement.setAttribute('data-theme', next)
     localStorage.setItem('theme', next)
   }
 
-  if (!mounted) return <div style={{ visibility: 'hidden' }}>{children}</div>
+  // Render children with opacity 0 before mount instead of visibility hidden
+  if (!mounted) return <div style={{ opacity: 0 }}>{children}</div>
 
   return (
     <ThemeContext.Provider value={{ theme, toggle }}>
