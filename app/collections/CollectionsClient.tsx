@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ProductCard from '@/components/commerce/ProductCard'
 
 interface Product {
@@ -18,9 +19,21 @@ const SORT_OPTIONS = [
 ]
 
 export default function CollectionsClient({ products }: { products: Product[] }) {
-  const [activeNiche, setActiveNiche] = useState('all')
+  const searchParams = useSearchParams()
+  const initialNiche = searchParams.get('niche') || 'all'
+  
+  const [activeNiche, setActiveNiche] = useState(initialNiche)
   const [sort, setSort] = useState('trending')
   const [search, setSearch] = useState('')
+
+  // If the URL changes (like when clicking the problem category), update the filter state
+  useEffect(() => {
+    const urlNiche = searchParams.get('niche')
+    if (urlNiche && urlNiche !== activeNiche) {
+      setActiveNiche(urlNiche)
+    }
+  }, [searchParams])
+
 
   // Build niche tabs from real product data
   const niches = useMemo(() => {

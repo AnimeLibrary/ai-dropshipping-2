@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Fix Kits & Bundles | TrendDrop',
+  title: 'Fix Kits & Bundles | Vexsen',
   description: 'Complete systemic fixes bundled for a lower price.',
 }
 

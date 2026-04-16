@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/db/prisma'
 import { generateGuideContent } from '@/lib/content/generator'
 import { faqSchema, articleSchema, breadcrumbSchema, SchemaMarkup } from '@/lib/seo/schema'
 import ProductCard from '@/components/commerce/ProductCard'
-import StickyCTA from '@/components/commerce/StickyCTA'
+import StickyCTA from '@/components/layout/StickyCTA'
 import BundleShowcase from '@/components/commerce/BundleShowcase'
 
 interface Props {
@@ -259,13 +259,8 @@ export default async function GuidePage({ params }: Props) {
         </div>
       </div>
 
-      {relatedProducts.length > 0 && (
-        <StickyCTA 
-          productTitle={relatedProducts[0].title} 
-          price={relatedProducts[0].price} 
-          slug={relatedProducts[0].slug} 
-        />
-      )}
+      <StickyCTA />
+
     </>
   )
 }

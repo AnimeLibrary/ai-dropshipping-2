@@ -1,127 +1,140 @@
-// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model Product {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  title            String
+  shortDescription String?
+  longDescription  String?
+  category         String?
+  niche            String
+  price            Float
+  compareAtPrice   Float?
+  supplierPrice    Float
+  heroImage        String?
+  trendScore       Int              @default(0)
+  source           String?
+  stripeProductId  String?          @unique
+  stripePriceId    String?          @unique
+  validationStatus String           @default("pending")
+  cjProductId      String?
+  cjVariantId      String?
+  cjVariants       Json?
+  
+  // CJ Analytics & Sync
+  cjSalesRank      Int?
+  cjSupplierScore  Float?
+  cjLastSyncedAt   DateTime?
+  cjRawData        Json?
+  primaryVariantId String?
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  orderItems       OrderItem[]
+  priceHistory     PriceLog[]
+  reviews          Review[]
+  suppliers        Supplier[]
+  bundles          Bundle[]         @relation("BundleProducts")
+  keywordClusters  KeywordCluster[] @relation("ProductToCluster")
+  variants         ProductVariant[] // Added Relation
 }
 
-model Product {
-  id                String   @id @default(cuid())
-  slug              String   @unique
-  title             String
-  shortDescription  String?  @db.Text
-  longDescription   String?  @db.Text
-  category          String?
-  niche             String
-  price             Float
-  compareAtPrice    Float?
-  supplierPrice     Float
-  heroImage         String?
-  trendScore        Int      @default(0)
-  source            String?  // e.g., 'kalodata', 'minea'
+model ProductVariant {
+  id                   String   @id @default(cuid())
+  productId            String
+  vid                  String   @unique
+  sku                  String?
+  label                String   // e.g., "XL / Red"
+  color                String?
+  size                 String?
+  supplierPrice        Float
+  retailPrice          Float
+  cjStock              Int      @default(0)
+  stripeVariantPriceId String?
+  image                String?
+  isDefault            Boolean  @default(false)
   
-  // Fulfillment & Stripe Mapping
-  stripeProductId   String?  @unique
-  stripePriceId     String?  @unique
-  validationStatus  String   @default("pending") // pending, approved, archived
-
-  // CJ Dropshipping
-  cjProductId       String?  // CJ product ID for API lookups
-  cjVariantId       String?  // CJ variant ID for order placement
-  
-  // Relations
-  suppliers         Supplier[]
-  reviews           Review[]
-  bundles           Bundle[]     @relation("BundleProducts")
-  orderItems        OrderItem[]
-  priceHistory      PriceLog[]
-  keywordClusters   KeywordCluster[] @relation("ProductToCluster") // New Relation
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  product              Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model KeywordCluster {
-  id              String   @id @default(cuid())
-  keyword         String   @unique
+  id              String    @id @default(cuid())
+  keyword         String    @unique
   searchVolume    Int
-  competition     String   // low, medium, high
-  intent          String   // informational, transactional, etc
-  trend           String   // rising, stable, declining
+  competition     String
+  intent          String
+  trend           String
   niche           String
-  relatedKeywords String[] // Array of strings (Postgres supported)
-  painPoint       String   @db.Text
-  solutionAngle   String   @db.Text
-  targetSlug      String   @unique
-  targetPageType  String   // guide, problem, solution
-  relatedSlugs    String[] // Array of slugs for internal linking
-  source          String   @default("manual")
-  aiContent       Json?    // Stores { story: string, faq: [], angles: [] }
-  
-  // Relations
-  products        Product[] @relation("ProductToCluster")
+  relatedKeywords String[]
+  painPoint       String
+  solutionAngle   String
+  targetSlug      String    @unique
+  targetPageType  String
+  relatedSlugs    String[]
+  source          String    @default("manual")
+  aiContent       Json?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  products        Product[] @relation("ProductToCluster")
 }
 
 model Supplier {
-  id            String   @id @default(cuid())
-  productId     String
-  name          String
-  url           String
-  price         Float
-  shippingDays  Int      @default(14)
-  isReliable    Boolean  @default(false)
-  isCheapest    Boolean  @default(false)
-
-  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id           String  @id @default(cuid())
+  productId    String
+  name         String
+  url          String
+  price        Float
+  shippingDays Int     @default(14)
+  isReliable   Boolean @default(false)
+  isCheapest   Boolean @default(false)
+  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Bundle {
-  id                String   @id @default(cuid())
-  title             String
-  hook              String?
-  price             Float
-  compareAtPrice    Float
-  heroImage         String?
-  
-  // Relations
-  products          Product[] @relation("BundleProducts")
-  status            String    @default("approved")
-  createdAt         DateTime  @default(now())
+  id             String    @id @default(cuid())
+  title          String
+  hook           String?
+  price          Float
+  compareAtPrice Float
+  heroImage      String?
+  status         String    @default("approved")
+  createdAt      DateTime  @default(now())
+  products       Product[] @relation("BundleProducts")
 }
 
 model Order {
-  id              String   @id @default(cuid())
-  stripeSessionId String   @unique
+  id              String      @id @default(cuid())
+  stripeSessionId String      @unique
   customerName    String
   customerEmail   String
   customerPhone   String?
   totalAmount     Float
-  status          String   @default("processing") // processing, shipped, failed
+  status          String      @default("processing")
   trackingNumber  String?
-  fulfillmentLog  String?  @db.Text
-  
-  // Relations
+  fulfillmentLog  String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
   items           OrderItem[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
 }
 
 model OrderItem {
-  id            String   @id @default(cuid())
-  orderId       String
-  productId     String
-  quantity      Int      @default(1)
-  priceAtSale   Float
-  supplierUrl   String?  // The specific URL used for fulfillment
-  cjVariantId   String?  // CJ variant for auto-fulfillment
-
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product       Product  @relation(fields: [productId], references: [id])
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  quantity    Int     @default(1)
+  priceAtSale Float
+  supplierUrl String?
+  cjVariantId String?
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id])
 }
 
 model PriceLog {
@@ -130,23 +143,22 @@ model PriceLog {
   supplierPrice Float
   retailPrice   Float
   timestamp     DateTime @default(now())
-
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model ProcessedEvent {
-  id            String   @id @default(cuid())
-  eventId       String   @unique // Stripe Event ID
-  type          String
-  processedAt   DateTime @default(now())
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  type        String
+  processedAt DateTime @default(now())
 }
 
 model SystemLog {
   id        String   @id @default(cuid())
-  level     String   // info, warn, error
-  source    String   // which service/route
-  message   String   @db.Text
-  meta      String?  @db.Text // JSON string for extra data
+  level     String
+  source    String
+  message   String
+  meta      String?
   createdAt DateTime @default(now())
 
   @@index([level])
@@ -157,15 +169,14 @@ model Review {
   id          String   @id @default(cuid())
   productId   String
   productSlug String
-  rating      Int      // 1-5
+  rating      Int
   title       String?
-  body        String   @db.Text
+  body        String
   authorName  String
   authorEmail String?
   verified    Boolean  @default(false)
-  status      String   @default("pending") // pending, approved, rejected
+  status      String   @default("pending")
   createdAt   DateTime @default(now())
-
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@index([productSlug])
@@ -174,13 +185,13 @@ model Review {
 
 model Referral {
   id            String        @id @default(cuid())
-  code          String        @unique  // e.g. "VEX-AB3K"
-  ownerId       String        // Clerk user ID
+  code          String        @unique
+  ownerId       String
   ownerEmail    String
   ownerName     String?
   creditsEarned Float         @default(0)
-  uses          ReferralUse[]
   createdAt     DateTime      @default(now())
+  uses          ReferralUse[]
 
   @@index([ownerId])
   @@index([code])
@@ -189,13 +200,13 @@ model Referral {
 model ReferralUse {
   id             String   @id @default(cuid())
   referralId     String
-  referral       Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
   buyerEmail     String
   orderId        String?
-  discountAmount Float    // How much the buyer saved (in $)
-  creditAwarded  Float    // Store credit given to referrer
-  status         String   @default("pending") // pending, confirmed
+  discountAmount Float
+  creditAwarded  Float
+  status         String   @default("pending")
   createdAt      DateTime @default(now())
+  referral       Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
 
   @@index([referralId])
 }

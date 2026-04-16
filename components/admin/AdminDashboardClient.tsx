@@ -4,9 +4,25 @@ import { useState, useEffect, useCallback } from 'react'
 import AdminChat from '@/components/admin/AdminChat'
 
 // ── Types ────────────────────────────────────────────────────
+interface ProductVariant {
+  id: string; vid: string; label: string; color: string | null; size: string | null
+  retailPrice: number; cjStock: number; image: string | null; isDefault: boolean
+  stripeVariantPriceId: string | null
+}
 interface Product {
-  id: string; title: string; niche: string; trendScore: number
-  price: number; supplierPrice: number; validationStatus: string
+  id: string; title: string; slug: string; niche: string; trendScore: number
+  price: number; supplierPrice: number; compareAtPrice?: number; validationStatus: string
+  stripePriceId?: string | null; stripeProductId?: string | null
+  cjProductId?: string | null; cjVariantId?: string | null
+  cjSalesRank?: number | null; cjSupplierScore?: number | null; cjLastSyncedAt?: string | null
+  heroImage?: string | null; shortDescription?: string | null
+  source?: string | null; category?: string | null; createdAt?: string
+  variants: ProductVariant[]
+}
+interface FullProduct extends Product {
+  suppliers: { id: string; name: string; url: string; price: number; isReliable: boolean }[]
+  reviews: { rating: number }[]
+  _count?: { orderItems: number }
 }
 interface Order {
   id: string; customerName: string; customerEmail: string
@@ -46,6 +62,7 @@ interface Props {
 }
 
 type Panel = 'products' | 'orders' | 'safety' | 'health' | 'logs' | 'flow' | 'referrals' | 'reviews' | 'seo'
+type ProductsSubTab = 'pipeline' | 'database'
 
 // ── Sub-components ───────────────────────────────────────────
 function StatusDot({ ok }: { ok: boolean }) {
@@ -66,7 +83,11 @@ const PANEL_COLOR: Record<string, string> = {
 
 // ── Main Dashboard ───────────────────────────────────────────
 export default function AdminDashboardClient({ pendingProducts, approvedProducts, liveOrders, archivedProducts, referrals, pendingReviews, seoClusters }: Props) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   const [panel, setPanel] = useState<Panel>('products')
+  const [productsTab, setProductsTab] = useState<ProductsSubTab>('pipeline')
   const [pending, setPending]   = useState(pendingProducts)
   const [approved, setApproved] = useState(approvedProducts)
   const [orders]                = useState(liveOrders)
@@ -79,6 +100,12 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   const [logLevel, setLogLevel] = useState<string>('')
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [cjMapping, setCjMapping] = useState<Record<string, { vId: string, pId: string }>>({})
+  // Full database state
+  const [allProducts, setAllProducts] = useState<FullProduct[]>([])
+  const [dbLoading, setDbLoading] = useState(false)
+  const [dbFilter, setDbFilter] = useState('all')
+  const [dbSearch, setDbSearch] = useState('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const showToast = (msg: string, type: 'ok'|'err' = 'ok') => {
     setToast({ msg, type })
@@ -103,6 +130,19 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
     } catch {}
   }, [])
 
+  // Fetch all products for database tab
+  const fetchAllProducts = useCallback(async (filter = 'all', search = '') => {
+    setDbLoading(true)
+    try {
+      const params = new URLSearchParams({ status: filter })
+      if (search) params.set('search', search)
+      const res = await fetch(`/api/admin/products?${params}`)
+      const data = await res.json()
+      setAllProducts(data.products || [])
+    } catch { showToast('Failed to load products', 'err') }
+    finally { setDbLoading(false) }
+  }, [])
+
   useEffect(() => {
     fetchStatus()
     fetchLogs()
@@ -111,6 +151,32 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   }, [fetchStatus, fetchLogs])
 
   useEffect(() => { if (panel === 'logs') fetchLogs(logLevel) }, [panel, logLevel, fetchLogs])
+  useEffect(() => { if (panel === 'products' && productsTab === 'database') fetchAllProducts(dbFilter, dbSearch) }, [panel, productsTab, fetchAllProducts])
+
+  // Stripe sync backup
+  const handleStripeSync = async (productId: string, title: string) => {
+    setLoadingId(`stripe-${productId}`)
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/stripe-sync`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      showToast(`💳 Synced to Stripe: ${title}`)
+      fetchAllProducts(dbFilter, dbSearch)
+    } catch (err: any) { showToast(err.message, 'err') }
+    finally { setLoadingId(null) }
+  }
+
+  // SEO push backup
+  const handleSeoPush = async (productId: string, title: string) => {
+    setLoadingId(`seo-${productId}`)
+    try {
+      const res = await fetch(`/api/admin/products/${productId}/seo-push`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      showToast(`📈 SEO: ${data.message}`)
+    } catch (err: any) { showToast(err.message, 'err') }
+    finally { setLoadingId(null) }
+  }
 
   const handleProductAction = async (productId: string, action: 'approve' | 'reject') => {
     setLoadingId(productId)
@@ -265,83 +331,327 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
         {/* ── PRODUCTS PANEL ── */}
         {panel === 'products' && (
           <div>
-            <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px' }}>Product Pipeline</h1>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+              <h1 style={{ fontSize:20, fontWeight:800, margin:0 }}>📦 Products</h1>
+              <div style={{ display:'flex', gap:8 }}>
+                {(['pipeline', 'database'] as const).map(t => (
+                  <button key={t} onClick={() => setProductsTab(t)} style={{ background: productsTab===t ? '#7c3aed33' : '#1e1e2e', border:`1px solid ${productsTab===t?'#7c3aed55':'#2e2e4e'}`, color: productsTab===t?'#c4b5fd':'#6b7280', borderRadius:6, padding:'6px 16px', cursor:'pointer', fontSize:12, fontWeight:productsTab===t?700:500 }}>
+                    {t === 'pipeline' ? '⏳ Pipeline' : '🗄️ All Products'}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-            <div style={{ marginBottom:28 }}>
-              <p style={label}>⏳ Pending Review ({pending.length})</p>
-              {pending.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>Queue is empty. Paste Kalodata/Minea CSV into the AI Agent to import products.</div>}
-              {pending.map(p => {
-                const profit = p.price - p.supplierPrice
-                const margin = ((profit / p.price) * 100).toFixed(1)
-                const passes = profit >= 20 && p.price >= p.supplierPrice * 3
-                return (
-                  <div key={p.id} style={card}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:16 }}>
-                      <div style={{ flex:1 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-                          <span style={{ fontWeight:700, fontSize:14 }}>{p.title}</span>
-                          <Tag color={passes?'#22c55e':'#ef4444'}>{passes?'PASSES RULES':'FAILS RULES'}</Tag>
-                          <Tag color='#7c3aed'>{p.niche}</Tag>
+            {/* ── PIPELINE SUB-TAB ── */}
+            {productsTab === 'pipeline' && (
+              <div>
+                <div style={{ marginBottom:28 }}>
+                  <p style={label}>⏳ Pending Review ({pending.length})</p>
+                {pending.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>Queue is empty. Paste Kalodata/Minea CSV into the AI Agent or type "scout products" to auto-find best sellers.</div>}
+                  {pending.map(p => {
+                    const profit = p.price - p.supplierPrice
+                    const margin = ((profit / p.price) * 100).toFixed(1)
+                    const passes = profit >= 20 && p.price >= p.supplierPrice * 3
+
+                    // CJ Analytics
+                    const salesRank = p.cjSalesRank || 0
+                    const maxSales = 10000
+                    const barPct = Math.min(100, Math.round((salesRank / maxSales) * 100))
+                    const supplierScore = p.cjSupplierScore || 0
+                    const hasCJ = !!p.cjProductId
+
+                    // Variants
+                    const variants = p.variants || []
+                    const colors = [...new Set(variants.map(v => v.color).filter(Boolean))] as string[]
+                    const sizes  = [...new Set(variants.map(v => v.size).filter(Boolean))]  as string[]
+                    const hasVariants = variants.length > 1
+                    const totalStock = variants.reduce((s, v) => s + v.cjStock, 0)
+
+                    const CSS_COLOR: Record<string,string> = {
+                      black:'#1a1a1a',white:'#f5f5f5',red:'#e53e3e',blue:'#3182ce',
+                      green:'#38a169',yellow:'#d69e2e',pink:'#d53f8c',purple:'#805ad5',
+                      orange:'#dd6b20',gray:'#718096',grey:'#718096',brown:'#92400e',navy:'#1a365d',
+                    }
+
+                    return (
+                      <div key={p.id} style={card}>
+
+                        {/* ── Row header ── */}
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, marginBottom:12 }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:4 }}>
+                              <span style={{ fontWeight:700, fontSize:14 }}>{p.title}</span>
+                              <Tag color={passes?'#22c55e':'#ef4444'}>{passes?'PASSES':'FAILS RULES'}</Tag>
+                              <Tag color='#7c3aed'>{p.niche}</Tag>
+                              {hasCJ && <Tag color='#60a5fa'>CJ ✓</Tag>}
+                            </div>
+                          </div>
+                          {/* Approve / Reject */}
+                          <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                            <button onClick={()=>handleProductAction(p.id,'approve')} disabled={loadingId===p.id} style={{ background:'#22c55e22', border:'1px solid #22c55e44', color:'#4ade80', borderRadius:6, padding:'6px 16px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===p.id?0.5:1 }}>
+                              {loadingId===p.id?'…':'✅ Approve'}
+                            </button>
+                            <button onClick={()=>handleProductAction(p.id,'reject')} disabled={loadingId===p.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
+                              ✕ Reject
+                            </button>
+                          </div>
                         </div>
-                        <div style={{ display:'flex', gap:20, color:'#6b7280', fontSize:12 }}>
-                          <span>Cost: <strong style={{color:'#e2e8f0'}}>${p.supplierPrice.toFixed(2)}</strong></span>
-                          <span>Retail: <strong style={{color:'#a78bfa'}}>${p.price.toFixed(2)}</strong></span>
-                          <span>Profit: <strong style={{color: profit>=20 ?'#4ade80':'#f87171'}}>${profit.toFixed(2)} ({margin}%)</strong></span>
-                          <span>Trend: <strong style={{color:'#60a5fa'}}>{p.trendScore}/100</strong></span>
+
+                        {/* ── 1. CJ ANALYTICS BLOCK (priority: sales → supplier → margin) ── */}
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8, marginBottom:12 }}>
+                          {/* Sales rank */}
+                          <div style={{ background:'#0a0a0f', borderRadius:8, padding:'10px 12px', border:'1px solid #1e1e2e' }}>
+                            <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>① Sales Volume</div>
+                            <div style={{ fontWeight:800, fontSize:15, color:'#a78bfa' }}>{salesRank.toLocaleString()}</div>
+                            <div style={{ marginTop:4, height:4, background:'#1e1e2e', borderRadius:2, overflow:'hidden' }}>
+                              <div style={{ width:`${barPct}%`, height:'100%', background:'linear-gradient(90deg,#7c3aed,#a78bfa)', borderRadius:2, transition:'width 0.3s ease' }} />
+                            </div>
+                          </div>
+                          {/* Supplier score */}
+                          <div style={{ background:'#0a0a0f', borderRadius:8, padding:'10px 12px', border:'1px solid #1e1e2e' }}>
+                            <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>② Supplier Score</div>
+                            <div style={{ fontWeight:800, fontSize:15, color: supplierScore > 70 ? '#4ade80' : supplierScore > 40 ? '#f59e0b' : '#f87171' }}>
+                              {hasCJ ? (supplierScore > 0 ? `${supplierScore.toFixed(0)}%` : 'N/A') : '—'}
+                            </div>
+                            {hasCJ && <div style={{ fontSize:10, color:'#4a4a6a', marginTop:2 }}>{p.cjProductId}</div>}
+                          </div>
+                          {/* Margin (3rd priority) */}
+                          <div style={{ background:'#0a0a0f', borderRadius:8, padding:'10px 12px', border:'1px solid #1e1e2e' }}>
+                            <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>③ Margin</div>
+                            <div style={{ fontWeight:800, fontSize:15, color: profit>=20?'#4ade80':'#f87171' }}>${profit.toFixed(2)} ({margin}%)</div>
+                            <div style={{ fontSize:10, color:'#6b7280', marginTop:2 }}>Cost ${p.supplierPrice.toFixed(2)} → Retail ${p.price.toFixed(2)}</div>
+                          </div>
                         </div>
+
+                        {/* ── 2. VARIANT GRID ── */}
+                        {hasVariants && (
+                          <div style={{ marginBottom:12 }}>
+                            <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
+                              Variants ({variants.length}) — Total Stock: {totalStock.toLocaleString()}
+                            </div>
+                            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:8 }}>
+                              {/* Color swatches */}
+                              {colors.length > 0 && colors.map(c => (
+                                <span key={c} title={c} style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:10, color:'#a8a29e', background:'#111118', border:'1px solid #2e2e4e', borderRadius:4, padding:'2px 7px' }}>
+                                  <span style={{ width:10, height:10, borderRadius:'50%', background: CSS_COLOR[c.toLowerCase()] || '#888', display:'inline-block', flexShrink:0 }} />
+                                  {c}
+                                </span>
+                              ))}
+                              {/* Size pills */}
+                              {sizes.length > 0 && sizes.map(s => (
+                                <span key={s} style={{ fontSize:10, color:'#a8a29e', background:'#111118', border:'1px solid #2e2e4e', borderRadius:4, padding:'2px 7px' }}>{s}</span>
+                              ))}
+                            </div>
+                            {/* VID table (scrollable for many variants) */}
+                            <div style={{ background:'#070710', borderRadius:6, border:'1px solid #1e1e2e', maxHeight:110, overflowY:'auto' }}>
+                              <table style={{ width:'100%', borderCollapse:'collapse', fontSize:10 }}>
+                                <thead><tr style={{ borderBottom:'1px solid #1e1e2e' }}>
+                                  <th style={{ padding:'5px 8px', color:'#4a4a6a', textAlign:'left', fontWeight:700 }}>LABEL</th>
+                                  <th style={{ padding:'5px 8px', color:'#4a4a6a', textAlign:'left', fontWeight:700 }}>VID</th>
+                                  <th style={{ padding:'5px 8px', color:'#4a4a6a', textAlign:'right', fontWeight:700 }}>STOCK</th>
+                                  <th style={{ padding:'5px 8px', color:'#4a4a6a', textAlign:'right', fontWeight:700 }}>PRICE</th>
+                                </tr></thead>
+                                <tbody>
+                                  {variants.slice(0,10).map((v,i) => (
+                                    <tr key={v.id} style={{ borderBottom: i < variants.length-1 ? '1px solid #111' : 'none' }}>
+                                      <td style={{ padding:'4px 8px', color: v.isDefault ? '#c4b5fd' : '#6b7280', fontWeight: v.isDefault ? 700 : 400 }}>{v.label}{v.isDefault?' ★':''}</td>
+                                      <td style={{ padding:'4px 8px' }}><code style={{ color:'#38bdf8', fontSize:9 }}>{v.vid}</code></td>
+                                      <td style={{ padding:'4px 8px', textAlign:'right', color: v.cjStock===0?'#f87171':v.cjStock<10?'#f59e0b':'#4ade80' }}>{v.cjStock}</td>
+                                      <td style={{ padding:'4px 8px', textAlign:'right', color:'#a78bfa' }}>${v.retailPrice.toFixed(2)}</td>
+                                    </tr>
+                                  ))}
+                                  {variants.length > 10 && <tr><td colSpan={4} style={{ padding:'4px 8px', color:'#4a4a6a', textAlign:'center' }}>+{variants.length-10} more variants</td></tr>}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── 3. ENRICH button ── */}
+                        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+                          <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                            {loadingId===`enrich-${p.id}` ? '⏳…' : '✨ Enrich Copy'}
+                          </button>
+                        </div>
+
                       </div>
-                      <div style={{ display:'flex', gap:8, flexShrink:0, flexDirection: 'column', alignItems: 'flex-end' }}>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 220 }}>
-                          <input 
-                            placeholder="CJ Variant ID" 
-                            value={cjMapping[p.id]?.vId || ''} 
-                            onChange={e => setCjMapping(prev => ({ ...prev, [p.id]: { ...prev[p.id], vId: e.target.value } }))}
-                            style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 11 }} 
-                          />
-                          <input 
-                            placeholder="CJ Product ID" 
-                            value={cjMapping[p.id]?.pId || ''} 
-                            onChange={e => setCjMapping(prev => ({ ...prev, [p.id]: { ...prev[p.id], pId: e.target.value } }))}
-                            style={{ background: '#0a0a0a', border: '1px solid #1f1f1f', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 11 }} 
-                          />
-                        </div>
+                    )
+                  })}
+                </div>
 
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} title="AI generates best copy + fetches product images via Serper" style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===`enrich-${p.id}`?0.5:1 }}>
-                            {loadingId===`enrich-${p.id}` ? '⏳ Enriching…' : '✨ Enrich'}
+                <div>
+                  <p style={label}>✅ Approved ({approved.length})</p>
+                  {approved.map(p => (
+                    <div key={p.id} style={{ ...card, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                      <div>
+                        <span style={{ fontWeight:600 }}>{p.title}</span>
+                        <span style={{ color:'#6b7280', marginLeft:12, fontSize:12 }}>${p.price.toFixed(2)}</span>
+                        {p.stripePriceId ? <Tag color='#22c55e'>💳 IN STRIPE</Tag> : <Tag color='#ef4444'>⚠️ NOT IN STRIPE</Tag>}
+                      </div>
+                      <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                        {!p.stripePriceId && (
+                          <button onClick={()=>handleStripeSync(p.id, p.title)} disabled={loadingId===`stripe-${p.id}`} style={{ background:'#f59e0b22', border:'1px solid #f59e0b44', color:'#fbbf24', borderRadius:6, padding:'4px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                            {loadingId===`stripe-${p.id}` ? '⏳…' : '💳 Push to Stripe'}
                           </button>
-                          <button onClick={()=>handleProductAction(p.id,'approve')} disabled={loadingId===p.id} style={{ background:'#22c55e22', border:'1px solid #22c55e44', color:'#4ade80', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===p.id?0.5:1 }}>
-                            {loadingId===p.id?'…':'✅ Approve'}
-                          </button>
-                          <button onClick={()=>handleProductAction(p.id,'reject')} disabled={loadingId===p.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
-                            ✕ Reject
-                          </button>
-                        </div>
+                        )}
+                        <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'4px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>{loadingId===`enrich-${p.id}` ? '⏳…' : '✨ Enrich'}</button>
+                        <Tag color='#22c55e'>APPROVED</Tag>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div>
-              <p style={label}>✅ Approved ({approved.length})</p>
-              {approved.map(p => (
-                <div key={p.id} style={{ ...card, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <span style={{ fontWeight:600 }}>{p.title}</span>
-                    <span style={{ color:'#6b7280', marginLeft:12, fontSize:12 }}>${p.price.toFixed(2)}</span>
-                  </div>
-                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                    <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} title="Re-enrich with latest AI copy + Serper images" style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'4px 12px', cursor:'pointer', fontWeight:700, fontSize:11, opacity:loadingId===`enrich-${p.id}`?0.5:1 }}>
-                      {loadingId===`enrich-${p.id}` ? '⏳…' : '✨ Enrich'}
-                    </button>
-                    <Tag color='#22c55e'>APPROVED</Tag>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {/* ── DATABASE SUB-TAB ── */}
+            {productsTab === 'database' && (
+              <div>
+                {/* Toolbar */}
+                <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+                  <input
+                    value={dbSearch}
+                    onChange={e => setDbSearch(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && fetchAllProducts(dbFilter, dbSearch)}
+                    placeholder="Search title, niche, slug…"
+                    style={{ background:'#0a0a0a', border:'1px solid #1f1f1f', color:'#e2e8f0', borderRadius:6, padding:'7px 12px', fontSize:12, width:220 }}
+                  />
+                  {(['all','pending','approved','archived'] as const).map(f => (
+                    <button key={f} onClick={() => { setDbFilter(f); fetchAllProducts(f, dbSearch) }} style={{ background: dbFilter===f?'#7c3aed33':'#1e1e2e', border:`1px solid ${dbFilter===f?'#7c3aed55':'#2e2e4e'}`, color: dbFilter===f?'#c4b5fd':'#6b7280', borderRadius:6, padding:'6px 12px', cursor:'pointer', fontSize:11, fontWeight:dbFilter===f?700:500, textTransform:'capitalize' }}>{f}</button>
+                  ))}
+                  <button onClick={() => fetchAllProducts(dbFilter, dbSearch)} style={{ background:'#1e1e2e', border:'1px solid #2e2e4e', borderRadius:6, color:'#a78bfa', cursor:'pointer', padding:'6px 12px', fontSize:12, fontWeight:700 }}>↻ Refresh</button>
+                  <span style={{ marginLeft:'auto', fontSize:11, color:'#4a4a6a' }}>{dbLoading ? 'Loading…' : `${allProducts.length} products`}</span>
+                </div>
+
+                {/* Product rows */}
+                {allProducts.length === 0 && !dbLoading && (
+                  <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:40 }}>No products found.</div>
+                )}
+                {allProducts.map(p => {
+                  const isExpanded = expandedId === p.id
+                  const profit = p.price - p.supplierPrice
+                  const margin = ((profit / p.price) * 100).toFixed(1)
+                  const avgRating = p.reviews?.length ? (p.reviews.reduce((s,r)=>s+r.rating,0)/p.reviews.length).toFixed(1) : null
+                  let galleryImages: string[] = []
+                  try { galleryImages = p.heroImage?.startsWith('[') ? JSON.parse(p.heroImage) : p.heroImage ? [p.heroImage] : [] } catch {}
+
+                  return (
+                    <div key={p.id} style={{ ...card, borderColor: p.validationStatus==='approved'?'#22c55e22':p.validationStatus==='archived'?'#ef444422':'#1e1e2e', marginBottom:10 }}>
+                      {/* Row header */}
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' }} onClick={() => setExpandedId(isExpanded ? null : p.id)}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10, flex:1, minWidth:0 }}>
+                          {galleryImages[0] && <img src={galleryImages[0]} alt="" style={{ width:40, height:40, objectFit:'cover', borderRadius:6, border:'1px solid #1e1e2e', flexShrink:0 }} />}
+                          <div style={{ minWidth:0 }}>
+                            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                              <span style={{ fontWeight:700, fontSize:13 }}>{p.title}</span>
+                              <Tag color={p.validationStatus==='approved'?'#22c55e':p.validationStatus==='archived'?'#ef4444':'#f59e0b'}>{p.validationStatus.toUpperCase()}</Tag>
+                              <Tag color='#7c3aed'>{p.niche}</Tag>
+                              {p.stripePriceId ? <Tag color='#22c55e'>💳 STRIPE ✓</Tag> : <Tag color='#ef4444'>⚠️ NO STRIPE</Tag>}
+                              {p.cjProductId && <Tag color='#60a5fa'>CJ ✓</Tag>}
+                            </div>
+                            <div style={{ fontSize:11, color:'#6b7280', marginTop:2 }}>/{p.slug} · ${p.price.toFixed(2)} retail · ${p.supplierPrice.toFixed(2)} cost · {margin}% margin</div>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', gap:6, alignItems:'center', flexShrink:0, marginLeft:12 }}>
+                          {/* Backup action buttons — always visible */}
+                          {!p.stripePriceId && p.validationStatus === 'approved' && (
+                            <button onClick={e=>{e.stopPropagation();handleStripeSync(p.id,p.title)}} disabled={loadingId===`stripe-${p.id}`} title="Push to Stripe" style={{ background:'#f59e0b22', border:'1px solid #f59e0b44', color:'#fbbf24', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11, whiteSpace:'nowrap' }}>
+                              {loadingId===`stripe-${p.id}` ? '⏳' : '💳 Stripe'}
+                            </button>
+                          )}
+                          <button onClick={e=>{e.stopPropagation();handleSeoPush(p.id,p.title)}} disabled={loadingId===`seo-${p.id}`} title="Push SEO cluster" style={{ background:'#14b8a622', border:'1px solid #14b8a644', color:'#5eead4', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                            {loadingId===`seo-${p.id}` ? '⏳' : '📈 SEO'}
+                          </button>
+                          <button onClick={e=>{e.stopPropagation();handleEnrich(p.id,p.title)}} disabled={loadingId===`enrich-${p.id}`} title="Re-enrich AI copy" style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                            {loadingId===`enrich-${p.id}` ? '⏳' : '✨ Enrich'}
+                          </button>
+                          <span style={{ color:'#4a4a6a', fontSize:14 }}>{isExpanded ? '▲' : '▼'}</span>
+                        </div>
+                      </div>
+
+                      {/* Expanded detail view */}
+                      {isExpanded && (
+                        <div style={{ marginTop:16, borderTop:'1px solid #1e1e2e', paddingTop:16 }}>
+                          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:12, marginBottom:16 }}>
+                            <div style={{ background:'#0a0a0a', borderRadius:8, padding:12 }}>
+                              <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Pricing</div>
+                              <div style={{ fontSize:12, display:'flex', flexDirection:'column', gap:4 }}>
+                                <span>Retail: <strong style={{color:'#a78bfa'}}>${p.price.toFixed(2)}</strong></span>
+                                <span>Cost: <strong style={{color:'#e2e8f0'}}>${p.supplierPrice.toFixed(2)}</strong></span>
+                                <span>Profit: <strong style={{color:profit>=20?'#4ade80':'#f87171'}}>${profit.toFixed(2)} ({margin}%)</strong></span>
+                                {p.compareAtPrice && <span>Compare at: <strong style={{color:'#6b7280'}}>${p.compareAtPrice.toFixed(2)}</strong></span>}
+                              </div>
+                            </div>
+                            <div style={{ background:'#0a0a0a', borderRadius:8, padding:12 }}>
+                              <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Stripe</div>
+                              <div style={{ fontSize:11, color:'#6b7280', wordBreak:'break-all', display:'flex', flexDirection:'column', gap:4 }}>
+                                <span>Product ID: <code style={{color: p.stripeProductId?'#4ade80':'#4a4a6a'}}>{p.stripeProductId || 'not synced'}</code></span>
+                                <span>Price ID: <code style={{color: p.stripePriceId?'#4ade80':'#4a4a6a'}}>{p.stripePriceId || 'not synced'}</code></span>
+                                {p.stripeProductId && <a href={`https://dashboard.stripe.com/products/${p.stripeProductId}`} target="_blank" style={{color:'#7c3aed', fontSize:11}}>Open in Stripe →</a>}
+                              </div>
+                            </div>
+                            <div style={{ background:'#0a0a0a', borderRadius:8, padding:12 }}>
+                              <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>CJ Dropshipping</div>
+                              <div style={{ fontSize:11, color:'#6b7280', display:'flex', flexDirection:'column', gap:4 }}>
+                                <span>Product ID: <code style={{color: p.cjProductId?'#4ade80':'#4a4a6a'}}>{p.cjProductId || 'not set'}</code></span>
+                                <span>Variant ID: <code style={{color: p.cjVariantId?'#4ade80':'#4a4a6a'}}>{p.cjVariantId || 'not set'}</code></span>
+                                <span>Source: <code style={{color:'#a78bfa'}}>{p.source || 'manual'}</code></span>
+                              </div>
+                            </div>
+                            <div style={{ background:'#0a0a0a', borderRadius:8, padding:12 }}>
+                              <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Performance</div>
+                              <div style={{ fontSize:11, color:'#6b7280', display:'flex', flexDirection:'column', gap:4 }}>
+                                <span>Orders: <strong style={{color:'#e2e8f0'}}>{p._count?.orderItems || 0}</strong></span>
+                                <span>Reviews: <strong style={{color:'#e2e8f0'}}>{p.reviews?.length || 0}</strong> {avgRating && <span style={{color:'#f59e0b'}}>★ {avgRating}</span>}</span>
+                                <span>Trend Score: <strong style={{color:'#60a5fa'}}>{p.trendScore}/100</strong></span>
+                                <span>Created: <strong style={{color:'#e2e8f0'}}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'n/a'}</strong></span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Gallery images */}
+                          {galleryImages.length > 0 && (
+                            <div style={{ marginBottom:12 }}>
+                              <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Images ({galleryImages.length})</div>
+                              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                                {galleryImages.map((img, i) => (
+                                  <a key={i} href={img} target="_blank">
+                                    <img src={img} alt={`img-${i}`} style={{ width:64, height:64, objectFit:'cover', borderRadius:6, border:'1px solid #1e1e2e' }} />
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Short description */}
+                          {p.shortDescription && (
+                            <div style={{ fontSize:12, color:'#a8a29e', background:'#0a0a0a', borderRadius:8, padding:12 }}>
+                              <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', marginBottom:6 }}>Description</div>
+                              {p.shortDescription}
+                            </div>
+                          )}
+
+                          {/* View on store link */}
+                          <div style={{ marginTop:12, display:'flex', gap:8 }}>
+                            <a href={`/products/${p.slug}`} target="_blank" style={{ background:'#1e1e2e', border:'1px solid #2e2e4e', color:'#60a5fa', borderRadius:6, padding:'5px 12px', fontSize:11, fontWeight:700, textDecoration:'none' }}>🔗 View on Store</a>
+                            {!p.stripePriceId && p.validationStatus === 'approved' && (
+                              <button onClick={()=>handleStripeSync(p.id,p.title)} disabled={loadingId===`stripe-${p.id}`} style={{ background:'#f59e0b22', border:'1px solid #f59e0b44', color:'#fbbf24', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                                {loadingId===`stripe-${p.id}` ? '⏳ Syncing…' : '💳 Force Push to Stripe'}
+                              </button>
+                            )}
+                            <button onClick={()=>handleSeoPush(p.id,p.title)} disabled={loadingId===`seo-${p.id}`} style={{ background:'#14b8a622', border:'1px solid #14b8a644', color:'#5eead4', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                              {loadingId===`seo-${p.id}` ? '⏳ Pushing…' : '📈 Force SEO Push'}
+                            </button>
+                            <button onClick={()=>handleEnrich(p.id,p.title)} disabled={loadingId===`enrich-${p.id}`} style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                              {loadingId===`enrich-${p.id}` ? '⏳ Enriching…' : '✨ Re-Enrich'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 

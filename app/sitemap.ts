@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/db/prisma'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://ai-dropshipping-2-nine.vercel.app'
 

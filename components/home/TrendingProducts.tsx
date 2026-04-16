@@ -42,14 +42,14 @@ export default function TrendingProducts({ products }: Props) {
       >
         <div>
           <span className="badge badge-glow" style={{ marginBottom: 'var(--space-3)' }}>
-            📈 Trending Now
+            ✓ Verified Quality
           </span>
           <h2 className="heading-xl">
-            Products People Are{' '}
-            <span className="gradient-text">Actually Buying</span>
+            Our Latest{' '}
+            <span className="gradient-text">Validated Solutions</span>
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginTop: 6 }}>
-            Every item is verified before it ships. Updated weekly.
+            We only list what we've personally verified.
           </p>
         </div>
         <Link href="/collections" className="btn btn-secondary hide-mobile" id="trending-view-all">

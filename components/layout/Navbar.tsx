@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/nextjs'
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/nextjs'
 import { useTheme } from './ThemeProvider'
 
 const NAV_LINKS = [
@@ -11,7 +11,6 @@ const NAV_LINKS = [
   { href: '/guides', label: 'Guides' },
   { href: '/problems', label: 'Problems' },
   { href: '/bundles', label: 'Bundles' },
-  { href: '/referral', label: '🎁 Refer & Earn' },
   { href: '/about', label: 'Our Story' },
 ]
 
@@ -20,7 +19,9 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, toggle } = useTheme()
   const pathname = usePathname()
+  const { user } = useUser()
   const isHome = pathname === '/'
+  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'brannenguidry28@gmail.com'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
@@ -45,7 +46,7 @@ export default function Navbar() {
               Vexsen
             </Link>
             <span className="hide-mobile" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-              Engineered for everyday
+              Engineered for Everyday Life
             </span>
           </div>
 
@@ -62,6 +63,17 @@ export default function Navbar() {
                 </Link>
               </li>
             ))}
+            {isAdmin && (
+              <li>
+                <Link
+                  href="/admin"
+                  className={`nav-link ${pathname.startsWith('/admin') ? 'active' : ''}`}
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  ⚙️ Admin
+                </Link>
+              </li>
+            )}
           </ul>
 
           {/* Right controls */}
@@ -161,6 +173,22 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              style={{
+                padding: 'var(--space-4)',
+                fontSize: 'var(--text-xl)',
+                fontFamily: 'var(--font-heading)',
+                fontWeight: 700,
+                color: 'var(--color-accent)',
+                borderRadius: 'var(--radius-lg)',
+                transition: 'all var(--transition-fast)',
+              }}
+            >
+              ⚙️ Admin Panel
+            </Link>
+          )}
         </nav>
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <SignedOut>

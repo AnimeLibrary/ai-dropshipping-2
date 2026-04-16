@@ -112,17 +112,25 @@ export const AGENT_TOOLS = [
       parameters: { type: 'object', properties: {} }
     }
   },
+  {
+    type: 'function',
+    function: {
+      name: 'list_approved_products',
+      description: 'Returns all approved products from the database with their Stripe sync status and details. Use this when the user asks to see what is live in the store, or wants to push a specific approved product to Stripe.',
+      parameters: { type: 'object', properties: {} }
+    }
+  },
   // ─── CJ DROPSHIPPING TOOLS ──────────────────────────────────
   {
     type: 'function',
     function: {
       name: 'search_cj_products',
-      description: 'Search CJ Dropshipping for products by keyword. Returns product names, images, prices, and CJ product IDs. Use this when the user wants to find products to sell, e.g. "find me a back pain product" or "search CJ for LED lights".',
+      description: 'Search CJ Dropshipping for products by keyword. Returns results ranked by SALES VOLUME first (best sellers), then supplier score, then margin. Use this when the user wants to find products. Focus on our store niches: pets, back pain, posture.',
       parameters: {
         type: 'object',
         properties: {
-          keyword: { type: 'string', description: 'Search keyword, e.g. "posture corrector" or "LED strip lights"' },
-          count: { type: 'number', description: 'Number of results to return (default 5, max 20)' }
+          keyword: { type: 'string', description: 'Search keyword, e.g. "posture corrector" or "dog harness"' },
+          count: { type: 'number', description: 'Number of results to return (default 8, max 20)' }
         },
         required: ['keyword']
       }
@@ -131,13 +139,26 @@ export const AGENT_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'scout_store_niches',
+      description: 'Automatically searches CJ Dropshipping for best-selling products across ALL of our store niches (pets, back pain, posture, etc.) without the user needing to specify. Call this when the user says "find me products", "what should we sell", or "scout new products".',
+      parameters: {
+        type: 'object',
+        properties: {
+          limit_per_niche: { type: 'number', description: 'How many products to return per niche (default 3)' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'import_cj_product',
-      description: 'Import a specific CJ Dropshipping product into the store database by its CJ product ID. Pulls all details (images, variants, pricing) from the CJ API and creates a pending product ready for approval. Use after search_cj_products when the user picks a product.',
+      description: 'Import a CJ product into the store database by its CJ product ID. Fetches ALL variants (sizes/colors), their VIDs, images and prices. Creates ONE product with a full variant set. Use after search_cj_products or scout_store_niches when the user picks a product.',
       parameters: {
         type: 'object',
         properties: {
           cj_product_id: { type: 'string', description: 'The CJ product ID (pid) to import' },
-          niche: { type: 'string', description: 'What niche/category to assign this product to' }
+          niche: { type: 'string', description: 'Niche/category to assign: pets, back-pain, posture, etc.' }
         },
         required: ['cj_product_id']
       }
@@ -146,8 +167,22 @@ export const AGENT_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'refresh_cj_product',
+      description: 'Manually refresh prices and stock levels for a product from CJ Dropshipping. Logs any price changes. Use when the user asks to check if prices or stock have changed.',
+      parameters: {
+        type: 'object',
+        properties: {
+          product_id: { type: 'string', description: 'The DB product ID to refresh' }
+        },
+        required: ['product_id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_cj_shipping',
-      description: 'Check shipping options and costs for a CJ product to a specific country. Use when the user asks about shipping times or costs.',
+      description: 'Check shipping options and costs for a CJ product to a specific country.',
       parameters: {
         type: 'object',
         properties: {
@@ -162,11 +197,25 @@ export const AGENT_TOOLS = [
     type: 'function',
     function: {
       name: 'enrich_product',
-      description: 'Uses AI to generate the best marketing copy and fetches real product images via Serper image search. Automatically updates the product shortDescription and heroImage in the database. Call this on any product that needs better copy or images — especially after import_cj_product.',
+      description: 'Uses AI to generate the best marketing copy and fetches real product images via Serper image search. Automatically updates the product shortDescription and heroImage in the database.',
       parameters: {
         type: 'object',
         properties: {
           product_id: { type: 'string', description: 'The DB product ID to enrich.' }
+        },
+        required: ['product_id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'stripe_sync_product',
+      description: 'Manually push an approved product to Stripe — creates a Stripe Product and one Price per variant and writes IDs back to the database.',
+      parameters: {
+        type: 'object',
+        properties: {
+          product_id: { type: 'string', description: 'The DB product ID to push to Stripe.' }
         },
         required: ['product_id']
       }
@@ -194,13 +243,17 @@ export async function executeTool(name: string, args: Record<string, any>): Prom
       case 'approve_product':       return await toolApproveProduct(args.product_id, args.notes)
       case 'reject_product':        return await toolRejectProduct(args.product_id, args.reason)
       case 'list_pending_products': return await toolListPending()
+      case 'list_approved_products': return await toolListApproved()
       case 'get_store_metrics':     return await toolGetMetrics()
       case 'scrape_url':            return await toolScrapeUrl(args.url)
       case 'add_product_manual':    return await toolAddProductManual(args.title, args.supplierPrice, args.niche, args.source)
       case 'search_cj_products':    return await toolSearchCJ(args.keyword, args.count)
+      case 'scout_store_niches':    return await toolScoutNiches(args.limit_per_niche)
       case 'import_cj_product':     return await toolImportCJ(args.cj_product_id, args.niche)
+      case 'refresh_cj_product':    return await toolRefreshCJ(args.product_id)
       case 'get_cj_shipping':       return await toolGetCJShipping(args.cj_product_id, args.country)
       case 'enrich_product':        return await toolEnrichProduct(args.product_id)
+      case 'stripe_sync_product':   return await toolStripeSyncProduct(args.product_id)
       default:
         return { success: false, error: `Unknown tool: ${name}` }
     }
@@ -401,10 +454,13 @@ async function toolAnalyzeProduct(productId: string): Promise<ToolResult> {
     approvalCommand: `Reply "approve ${productId}" to approve or "reject ${productId} [reason]" to reject.`
   }
 
-  // Store the full analysis report in the product record
-  await prisma.product.update({
-    where: { id: productId },
-    data: { longDescription: JSON.stringify(report, null, 2) }
+  // Log the analysis for admin audit trail — DO NOT write to any customer-facing field
+  await logToDb('info', 'agent:analyze', `Analysis complete for "${product.title}"`, {
+    productId,
+    verdict,
+    profit: profit.toFixed(2),
+    margin: marginPercentage.toFixed(1),
+    saturation: saturationScore,
   })
 
   return { success: true, data: report }
@@ -492,6 +548,37 @@ async function toolListPending(): Promise<ToolResult> {
   }
 }
 
+async function toolListApproved(): Promise<ToolResult> {
+  const products = await prisma.product.findMany({
+    where: { validationStatus: 'approved' },
+    select: { id: true, title: true, slug: true, niche: true, price: true, supplierPrice: true, stripePriceId: true, stripeProductId: true, cjProductId: true, source: true, createdAt: true },
+    orderBy: { createdAt: 'desc' }
+  })
+  const formatted = products.map(p => ({
+    id: p.id,
+    title: p.title,
+    slug: p.slug,
+    niche: p.niche,
+    price: `$${p.price.toFixed(2)}`,
+    cost: `$${p.supplierPrice.toFixed(2)}`,
+    profit: `$${(p.price - p.supplierPrice).toFixed(2)}`,
+    stripeStatus: p.stripePriceId ? `✅ Synced (${p.stripePriceId})` : '❌ NOT IN STRIPE — call stripe_sync_product to fix',
+    cjLinked: p.cjProductId ? `✅ CJ: ${p.cjProductId}` : '❌ No CJ link',
+    storeUrl: `/products/${p.slug}`,
+    syncCommand: !p.stripePriceId ? `To push to Stripe: call stripe_sync_product with product_id="${p.id}"` : null,
+  }))
+  const unsynced = formatted.filter(p => !products.find(r => r.id === p.id)?.stripePriceId)
+  return {
+    success: true,
+    data: {
+      count: products.length,
+      unsyncedCount: products.filter(p => !p.stripePriceId).length,
+      products: formatted,
+      notice: unsynced.length > 0 ? `⚠️ ${unsynced.length} approved product(s) are not yet in Stripe. Use stripe_sync_product to push them.` : '✅ All approved products are synced to Stripe.'
+    }
+  }
+}
+
 async function toolGetMetrics(): Promise<ToolResult> {
   const [totalOrders, pendingCount, approvedCount, archivedCount, revenueAgg] = await Promise.all([
     prisma.order.count(),
@@ -512,34 +599,114 @@ async function toolGetMetrics(): Promise<ToolResult> {
 }
 
 // ─── CJ DROPSHIPPING TOOL IMPLEMENTATIONS ────────────────────
+import { STORE_NICHES, type CJFullProduct } from '@/lib/services/cj-service'
 
-async function toolSearchCJ(keyword: string, count: number = 5): Promise<ToolResult> {
-  if (!cj.isConfigured()) {
-    return { success: false, error: 'CJ Dropshipping API not configured. Add CJ_EMAIL and CJ_API_KEY to your .env file. Sign up free at cjdropshipping.com' }
+/**
+ * Builds a rich analytics summary string for a CJ product.
+ * Priority order: Sales → Supplier → Margin
+ */
+function buildCJAnalyticsSummary(p: CJFullProduct, supplierPrice: number, retailPrice: number) {
+  const { calculateProfitStats } = require('@/lib/utils/pricing')
+  const { profit, marginPercentage } = calculateProfitStats(retailPrice, supplierPrice)
+
+  // Sales bar (ASCII, 10-char width)
+  const maxSales = 10000
+  const barLen = Math.min(10, Math.round(((p.salesVolume || 0) / maxSales) * 10))
+  const salesBar = `[${'█'.repeat(barLen)}${' '.repeat(10 - barLen)}]`
+
+  return {
+    salesRank: p.salesVolume || 0,
+    salesBar,
+    supplierScore: p.supplierScore || 0,
+    reviewCount: p.reviewCount || 0,
+    reviewScore: p.reviewScore || 0,
+    shippingDays: p.shippingDays || 10,
+    supplierPrice: `$${supplierPrice.toFixed(2)}`,
+    retailPrice: `$${retailPrice.toFixed(2)}`,
+    profit: `$${profit.toFixed(2)}`,
+    margin: `${marginPercentage.toFixed(1)}%`,
+    passesRules: profit >= 20 && retailPrice >= supplierPrice * 3,
+  }
+}
+
+async function toolScoutNiches(limitPerNiche: number = 3): Promise<ToolResult> {
+  if (!cj.isConfigured()) return { success: false, error: 'CJ API not configured.' }
+  const { calculateTargetPrice } = require('@/lib/utils/pricing')
+
+  const results: any[] = []
+  for (const niche of STORE_NICHES) {
+    try {
+      const products = await cj.searchBestSellers(niche.keyword, limitPerNiche)
+      for (const p of products.slice(0, limitPerNiche)) {
+        const retailPrice = calculateTargetPrice(p.supplierPrice)
+        const analytics = buildCJAnalyticsSummary(p, p.supplierPrice, retailPrice)
+        results.push({
+          niche: niche.niche,
+          searchKeyword: niche.keyword,
+          name: p.title,
+          cjProductId: p.pid,
+          image: p.image,
+          ...analytics,
+          variantCount: p.variants.length,
+          importCommand: `call import_cj_product with cj_product_id="${p.pid}" niche="${niche.niche}"`,
+        })
+      }
+    } catch { /* skip failed niche */ }
   }
 
-  try {
-    const results = await cj.searchProduct(keyword)
-    const limited = results.slice(0, count || 5)
+  results.sort((a, b) => b.salesRank - a.salesRank)
 
-    const products = limited.map((p: any, i: number) => ({
-      rank: i + 1,
-      name: p.productNameEn || p.productName || 'Unknown',
-      cjProductId: p.pid,
-      price: `$${(p.sellPrice || 0).toFixed(2)}`,
-      image: p.productImage || '',
-      category: p.categoryName || 'general',
-      variants: p.variantCount || 1,
-      importCommand: `To import this: call import_cj_product with cj_product_id="${p.pid}"`
-    }))
+  return {
+    success: true,
+    data: {
+      message: `🔍 Scouted ${results.length} best-selling products across our store niches (pets, back-pain, posture). Ranked by sales volume.`,
+      niches: ['pets', 'back-pain', 'posture'],
+      products: results,
+      note: 'Rankings are: 1st = Sales Volume, 2nd = Supplier Score, 3rd = Margin. Pick one and call import_cj_product to add it.'
+    }
+  }
+}
+
+async function toolSearchCJ(keyword: string, count: number = 8): Promise<ToolResult> {
+  if (!cj.isConfigured()) {
+    return { success: false, error: 'CJ Dropshipping API not configured. Add CJ_EMAIL and CJ_API_KEY to your .env file.' }
+  }
+  const { calculateTargetPrice } = require('@/lib/utils/pricing')
+
+  try {
+    const results = await cj.searchBestSellers(keyword, count || 8)
+    const products = results.map((p, i) => {
+      const retailPrice = calculateTargetPrice(p.supplierPrice)
+      const analytics = buildCJAnalyticsSummary(p, p.supplierPrice, retailPrice)
+      return {
+        rank: i + 1,
+        name: p.title,
+        cjProductId: p.pid,
+        image: p.image,
+        category: p.categoryName,
+        variantCount: p.variants.length,
+        // Priority order displayed: Sales → Supplier → Margin
+        '1_salesVolume': analytics.salesRank,
+        '1_salesBar': analytics.salesBar,
+        '2_supplierScore': analytics.supplierScore,
+        '2_shippingDays': analytics.shippingDays,
+        '3_supplierPrice': analytics.supplierPrice,
+        '3_retailPrice': analytics.retailPrice,
+        '3_profit': analytics.profit,
+        '3_margin': analytics.margin,
+        '3_passesRules': analytics.passesRules,
+        importCommand: `call import_cj_product with cj_product_id="${p.pid}" niche="[assign niche: pets/back-pain/posture]"`
+      }
+    })
 
     return {
       success: true,
       data: {
         keyword,
         resultCount: products.length,
+        rankingNote: 'Results ranked: #1 Sales Volume → #2 Supplier Score → #3 Margin',
         products,
-        nextStep: `Tell the user which products look interesting. When they pick one, call import_cj_product with the cj_product_id to add it to the store.`
+        nextStep: 'Pick a product and call import_cj_product. I will pull ALL variants (sizes/colors) automatically.'
       }
     }
   } catch (err: any) {
@@ -549,28 +716,26 @@ async function toolSearchCJ(keyword: string, count: number = 5): Promise<ToolRes
 
 async function toolImportCJ(cjProductId: string, niche: string = 'general'): Promise<ToolResult> {
   if (!cj.isConfigured()) {
-    return { success: false, error: 'CJ Dropshipping API not configured. Add CJ_EMAIL and CJ_API_KEY to your .env file.' }
+    return { success: false, error: 'CJ Dropshipping API not configured.' }
   }
+  const { calculateTargetPrice } = require('@/lib/utils/pricing')
 
   try {
-    const cjProduct = await cj.getProduct(cjProductId)
-    if (!cjProduct) {
-      return { success: false, error: `CJ product ${cjProductId} not found.` }
-    }
+    const cjProduct = await cj.getFullProductWithVariants(cjProductId)
+    if (!cjProduct) return { success: false, error: `CJ product ${cjProductId} not found.` }
 
-    const title = cjProduct.productNameEn || cjProduct.productName || 'CJ Product'
-    const rawPrice = String(cjProduct.sellPrice || cjProduct.productPrice || 10)
-    const parsedPrice = parseFloat(rawPrice.split('-')[0])
-    const supplierPrice = isNaN(parsedPrice) ? 10 : parsedPrice
+    const title = cjProduct.title
+    const supplierPrice = cjProduct.supplierPrice || 10
     const retailPrice = calculateTargetPrice(supplierPrice)
-    const image = cjProduct.productImage || ''
-    
-    // Get the first/default variant ID for order placement
-    const firstVariant = cjProduct.variants?.[0]
-    const variantId = firstVariant?.vid || ''
-
+    const allImages = cjProduct.images.length > 0 ? JSON.stringify(cjProduct.images) : (cjProduct.image || null)
     const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 60)}-${Date.now()}`
 
+    // Identify the best default variant: highest stock, or first
+    const sortedVariants = [...cjProduct.variants].sort((a, b) => b.stock - a.stock)
+    const defaultVariant = sortedVariants[0]
+    const defaultVid = defaultVariant?.vid || ''
+
+    // Create the parent Product
     const product = await prisma.product.create({
       data: {
         slug,
@@ -578,19 +743,23 @@ async function toolImportCJ(cjProductId: string, niche: string = 'general'): Pro
         niche: niche || 'general',
         price: retailPrice,
         supplierPrice,
-        heroImage: image || null,
+        heroImage: allImages,
         source: 'cjdropshipping',
-        trendScore: 80,
+        trendScore: Math.min(100, Math.round((cjProduct.salesVolume || 0) / 100) + 60),
         validationStatus: 'pending',
         cjProductId: cjProductId,
-        cjVariantId: variantId,
-        shortDescription: null, // Will be filled by AI enrichment automatically
+        cjVariantId: defaultVid,
+        cjSalesRank: cjProduct.salesVolume || 0,
+        cjSupplierScore: cjProduct.supplierScore || 0,
+        cjRawData: cjProduct as any,
+        cjLastSyncedAt: new Date(),
+        shortDescription: null,
         suppliers: {
           create: [{
             name: 'CJ Dropshipping',
             url: `https://cjdropshipping.com/product-p-${cjProductId}.html`,
             price: supplierPrice,
-            shippingDays: 10,
+            shippingDays: cjProduct.shippingDays || 10,
             isReliable: true,
             isCheapest: true,
           }]
@@ -598,27 +767,130 @@ async function toolImportCJ(cjProductId: string, niche: string = 'general'): Pro
       }
     })
 
-    // Auto-analyze then auto-enrich with AI copy + real images
+    // Create ProductVariant rows for every variant
+    const variantRows = cjProduct.variants.length > 0
+      ? cjProduct.variants
+      : [{ vid: defaultVid, sku: '', label: 'Default', color: undefined, size: undefined, supplierPrice, stock: 0, image: cjProduct.image }]
+
+    const createdVariants = await prisma.$transaction(
+      variantRows.map((v, idx) =>
+        prisma.productVariant.create({
+          data: {
+            productId: product.id,
+            vid: v.vid || `${cjProductId}-v${idx}`,
+            sku: v.sku || '',
+            label: v.label || 'Default',
+            color: v.color || null,
+            size: v.size || null,
+            supplierPrice: v.supplierPrice || supplierPrice,
+            retailPrice: calculateTargetPrice(v.supplierPrice || supplierPrice),
+            cjStock: v.stock || 0,
+            image: v.image || cjProduct.image || null,
+            isDefault: idx === 0 || v.vid === defaultVid,
+          }
+        })
+      )
+    )
+
+    // Update primaryVariantId
+    if (createdVariants[0]) {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { primaryVariantId: createdVariants[0].id }
+      })
+    }
+
+    // Auto-analyze
     const analysis = await toolAnalyzeProduct(product.id)
-    // Fire enrichment async without blocking the approve flow
+    // Fire enrichment async without blocking
     enrichProductWithAI(product.id, title, niche || 'general').catch(() => {})
+
+    const variantSummary = createdVariants.slice(0, 5).map(v => ({
+      label: v.label,
+      vid: v.vid,
+      price: `$${v.retailPrice.toFixed(2)}`,
+      stock: v.cjStock,
+      isDefault: v.isDefault,
+    }))
 
     return {
       success: true,
       data: {
-        message: `✅ "${title}" imported from CJ Dropshipping and analyzed.`,
+        message: `✅ "${title}" imported from CJ with ${createdVariants.length} variant(s).`,
         productId: product.id,
         cjProductId,
-        cjVariantId: variantId,
+        salesVolume: cjProduct.salesVolume || 0,
+        supplierScore: cjProduct.supplierScore || 0,
         supplierPrice: `$${supplierPrice.toFixed(2)}`,
         retailPrice: `$${retailPrice.toFixed(2)}`,
-        image,
+        profit: `$${(retailPrice - supplierPrice).toFixed(2)}`,
+        variantCount: createdVariants.length,
+        variants: variantSummary,
+        allVids: createdVariants.map(v => ({ label: v.label, vid: v.vid })),
         analysis: analysis.data,
-        nextStep: `Product is pending approval. Reply "approve ${product.id}" to go live or "reject ${product.id} [reason]" to discard.`
+        nextStep: `Product is in your approval queue with all ${createdVariants.length} variant(s). Approve to push to store + Stripe.`
       }
     }
   } catch (err: any) {
     return { success: false, error: `CJ import failed: ${err.message}` }
+  }
+}
+
+async function toolRefreshCJ(productId: string): Promise<ToolResult> {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { variants: true }
+  })
+  if (!product) return { success: false, error: 'Product not found' }
+  if (!product.cjProductId) return { success: false, error: 'No CJ product ID linked to this product' }
+  const { calculateTargetPrice } = require('@/lib/utils/pricing')
+
+  const fresh = await cj.refreshProductPriceAndStock(product.cjProductId)
+  if (!fresh) return { success: false, error: 'CJ returned no data for this product' }
+
+  const priceChanged = fresh.supplierPrice !== product.supplierPrice
+
+  if (priceChanged) {
+    const newRetail = calculateTargetPrice(fresh.supplierPrice)
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        supplierPrice: fresh.supplierPrice,
+        price: newRetail,
+        cjLastSyncedAt: new Date(),
+      }
+    })
+    await prisma.priceLog.create({
+      data: { productId, supplierPrice: fresh.supplierPrice, retailPrice: newRetail }
+    })
+  }
+
+  // Sync individual variant stock
+  for (const fv of fresh.variants) {
+    if (!fv.vid) continue
+    await prisma.productVariant.updateMany({
+      where: { vid: fv.vid },
+      data: {
+        cjStock: fv.stock,
+        supplierPrice: fv.supplierPrice,
+        retailPrice: calculateTargetPrice(fv.supplierPrice),
+      }
+    })
+  }
+  await prisma.product.update({
+    where: { id: productId },
+    data: { cjLastSyncedAt: new Date() }
+  })
+
+  return {
+    success: true,
+    data: {
+      message: priceChanged
+        ? `📊 Price updated: $${product.supplierPrice.toFixed(2)} → $${fresh.supplierPrice.toFixed(2)}. Retail price adjusted. New PriceLog entry created.`
+        : `✅ No price change. Stock levels updated for ${fresh.variants.length} variant(s).`,
+      priceChanged,
+      variants: fresh.variants,
+    }
   }
 }
 
@@ -649,6 +921,72 @@ async function toolGetCJShipping(cjProductId: string, country: string = 'US'): P
     }
   } catch (err: any) {
     return { success: false, error: `CJ shipping check failed: ${err.message}` }
+  }
+}
+
+// ─── STRIPE SYNC TOOL ─────────────────────────────────────────
+async function toolStripeSyncProduct(productId: string): Promise<ToolResult> {
+  if (!stripe) return { success: false, error: 'STRIPE_SECRET_KEY not configured in .env' }
+
+  const product = await prisma.product.findUnique({ where: { id: productId } })
+  if (!product) return { success: false, error: `Product ${productId} not found.` }
+
+  if (product.stripePriceId) {
+    return {
+      success: true,
+      data: {
+        message: `✅ "${product.title}" is already in Stripe.`,
+        stripePriceId: product.stripePriceId,
+        stripeProductId: product.stripeProductId,
+      }
+    }
+  }
+
+  if (product.validationStatus !== 'approved') {
+    return { success: false, error: `Product must be approved before pushing to Stripe. Current status: ${product.validationStatus}` }
+  }
+
+  try {
+    let imageUrls: string[] = []
+    try {
+      if (product.heroImage?.startsWith('[')) {
+        imageUrls = JSON.parse(product.heroImage).slice(0, 8)
+      } else if (product.heroImage) {
+        imageUrls = [product.heroImage]
+      }
+    } catch {}
+
+    const stripeProd = await stripe.products.create({
+      name: product.title,
+      description: product.shortDescription || `A targeted solution for ${product.niche.replace(/-/g, ' ')}`,
+      images: imageUrls,
+      metadata: { productId: product.id, slug: product.slug },
+    })
+
+    const stripePrice = await stripe.prices.create({
+      product: stripeProd.id,
+      unit_amount: Math.round(product.price * 100),
+      currency: 'usd',
+    })
+
+    await prisma.product.update({
+      where: { id: productId },
+      data: { stripeProductId: stripeProd.id, stripePriceId: stripePrice.id }
+    })
+
+    await logToDb('info', 'agent:stripe-sync', `"${product.title}" pushed to Stripe via AI agent`, { productId, stripeProductId: stripeProd.id })
+
+    return {
+      success: true,
+      data: {
+        message: `✅ "${product.title}" is now LIVE in Stripe and ready for checkout.`,
+        stripeProductId: stripeProd.id,
+        stripePriceId: stripePrice.id,
+        dashboardUrl: `https://dashboard.stripe.com/products/${stripeProd.id}`,
+      }
+    }
+  } catch (err: any) {
+    return { success: false, error: `Stripe sync failed: ${err.message}` }
   }
 }
 
@@ -749,16 +1087,20 @@ Rules:
         const serperData = await serperRes.json()
         const images: any[] = serperData.images || []
 
-        // Pick the best image: prefer jpg/webp, avoid SVG/GIF, pick highest res available
-        const validImage = images.find(img =>
-          img.imageUrl &&
-          !img.imageUrl.endsWith('.svg') &&
-          !img.imageUrl.endsWith('.gif') &&
-          (img.imageUrl.startsWith('https://') || img.imageUrl.startsWith('http://'))
-        )
+        // Pick up to 6 valid images: prefer jpg/webp, avoid SVG/GIF
+        const validImages = images
+          .filter(img =>
+            img.imageUrl &&
+            !img.imageUrl.endsWith('.svg') &&
+            !img.imageUrl.endsWith('.gif') &&
+            (img.imageUrl.startsWith('https://') || img.imageUrl.startsWith('http://'))
+          )
+          .slice(0, 6)
+          .map(img => img.imageUrl)
 
-        if (validImage?.imageUrl) {
-          bestImage = validImage.imageUrl
+        if (validImages.length > 0) {
+          // Store as JSON array for gallery support
+          bestImage = JSON.stringify(validImages)
         }
       }
     } catch (e: any) {

@@ -63,6 +63,7 @@ export default function CheckoutButton({
           productId,
           title: resolvedTitle,
           price,
+          priceId,
           imageUrl,
           bundleItems,
           referralCode: promoStatus === 'valid' ? promoCode.trim().toUpperCase() : undefined,

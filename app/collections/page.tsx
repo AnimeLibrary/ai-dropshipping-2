@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { prisma } from '@/lib/db/prisma'
 import CollectionsClient from './CollectionsClient'
 
@@ -29,5 +30,9 @@ export default async function CollectionsPage() {
     heroImage: p.heroImage || '/placeholder.png',
   }))
 
-  return <CollectionsClient products={normalized} />
+  return (
+    <Suspense fallback={<div style={{ paddingTop: 'var(--nav-height)', minHeight: '100vh' }}>Loading collections...</div>}>
+      <CollectionsClient products={normalized} />
+    </Suspense>
+  )
 }

@@ -70,7 +70,7 @@ export default function HeroSection() {
             alignItems: 'center' 
           }}>
             <Link
-              href="#trending-products"
+              href="/collections"
               id="hero-cta-primary"
               className="btn btn-primary btn-lg"
               style={{ width: '100%', maxWidth: '320px', textAlign: 'center' }}

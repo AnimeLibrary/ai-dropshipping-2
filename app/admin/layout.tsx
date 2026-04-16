@@ -1,8 +1,13 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 
 // Admin layout — completely isolated from the public site.
 // No Navbar, no Footer, no StickyCTA. Raw command interface only.
+
+export const metadata: Metadata = {
+  title: 'Vexsen Admin',
+  robots: { index: false, follow: false },
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser()
@@ -21,15 +26,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <html lang="en">
-      <head>
-        <title>Vexsen Admin</title>
-        <meta name="robots" content="noindex, nofollow" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </head>
-      <body style={{ margin: 0, padding: 0 }}>
-        {children}
-      </body>
-    </html>
+    <div style={{ margin: 0, padding: 0, minHeight: '100vh' }}>
+      {children}
+    </div>
   )
 }

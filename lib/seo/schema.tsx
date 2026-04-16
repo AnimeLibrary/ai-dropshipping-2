@@ -1,51 +1,54 @@
-// ============================================================
-// SCHEMA.ORG GENERATOR
-// Auto-generates JSON-LD structured data per page type
-// Validates against Google's Rich Results guidelines
-// ============================================================
+import React from 'react'
 
-import { Product } from '@/lib/data/products'
-import { GeneratedPageContent } from '@/lib/content/generator'
+export function SchemaMarkup({ schema }: { schema: Record<string, any> }) {
+  if (!schema) return null
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
+  )
+}
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://vexsen.store'
-const SITE_NAME = 'Vexsen'
-
-// ============================================================
-// PRODUCT SCHEMA
-// ============================================================
-export function productSchema(product: Product) {
+export function productSchema(product: any) {
+  if (!product) return null
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.title,
-    description: product.shortDescription,
-    image: product.heroImage || '',
-    brand: { '@type': 'Brand', name: SITE_NAME },
+    description: product.shortDescription || `Buy ${product.title} online.`,
+    image: product.heroImage,
+    sku: product.id,
     offers: {
       '@type': 'Offer',
-      url: `${SITE_URL}/products/${product.slug}`,
       priceCurrency: 'USD',
-      price: product.price.toFixed(2),
-      priceValidUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split('T')[0],
+      price: product.price,
       availability: 'https://schema.org/InStock',
-      seller: { '@type': 'Organization', name: SITE_NAME },
+      url: `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.slug}`,
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '4.6',
-      reviewCount: Math.floor(50 + product.trendScore * 2),
-      bestRating: '5',
-      worstRating: '1',
+    brand: {
+      '@type': 'Brand',
+      name: 'Vexsen',
     },
   }
 }
 
-// ============================================================
-// FAQ SCHEMA
-// ============================================================
+export function breadcrumbSchema(breadcrumbs: { name: string; href: string }[]) {
+  if (!breadcrumbs || breadcrumbs.length === 0) return null
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbs.map((crumb, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: crumb.name,
+      item: `${process.env.NEXT_PUBLIC_SITE_URL}${crumb.href}`,
+    })),
+  }
+}
+
 export function faqSchema(faqs: { question: string; answer: string }[]) {
+  if (!faqs || faqs.length === 0) return null
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
@@ -58,109 +61,4 @@ export function faqSchema(faqs: { question: string; answer: string }[]) {
       },
     })),
   }
-}
-
-// ============================================================
-// ARTICLE / GUIDE SCHEMA
-// ============================================================
-export function articleSchema(params: {
-  title: string
-  description: string
-  slug: string
-  section: 'guides' | 'problems' | 'solutions'
-  datePublished?: string
-}) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: params.title,
-    description: params.description,
-    url: `${SITE_URL}/${params.section}/${params.slug}`,
-    author: { '@type': 'Organization', name: SITE_NAME, url: SITE_URL },
-    publisher: {
-      '@type': 'Organization',
-      name: SITE_NAME,
-      url: SITE_URL,
-      logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
-    },
-    datePublished: params.datePublished || new Date().toISOString(),
-    dateModified: new Date().toISOString(),
-    mainEntityOfPage: { '@type': 'WebPage', '@id': `${SITE_URL}/${params.section}/${params.slug}` },
-  }
-}
-
-// ============================================================
-// VIDEO SCHEMA
-// ============================================================
-export function videoSchema(params: { name: string; description: string; uploadDate: string; thumbnailUrl: string; contentUrl: string }) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'VideoObject',
-    name: params.name,
-    description: params.description,
-    uploadDate: params.uploadDate,
-    thumbnailUrl: params.thumbnailUrl,
-    contentUrl: params.contentUrl,
-  }
-}
-
-// ============================================================
-// PRODUCT COMPARISON SCHEMA
-// ============================================================
-export function productComparisonSchema(products: Product[]) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    itemListElement: products.map((product, index) => ({
-      '@type': 'ListItem',
-      position: index + 1,
-      item: {
-        '@type': 'Product',
-        name: product.title,
-        url: `${SITE_URL}/products/${product.slug}`,
-      },
-    })),
-  }
-}
-
-// ============================================================
-// BREADCRUMB SCHEMA
-// ============================================================
-export function breadcrumbSchema(crumbs: { name: string; href: string }[]) {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: crumbs.map((crumb, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      name: crumb.name,
-      item: `${SITE_URL}${crumb.href}`,
-    })),
-  }
-}
-
-// ============================================================
-// ORGANIZATION SCHEMA (inject in root layout once)
-// ============================================================
-export function organizationSchema() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: SITE_NAME,
-    url: SITE_URL,
-    description: 'Premium everyday essentials engineered for life. Functional design, uncompromising quality.',
-    sameAs: [],
-  }
-}
-
-// ============================================================
-// UTILITY: Inject schema as <script type="application/ld+json">
-// ============================================================
-export function SchemaMarkup({ schema }: { schema: object }) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
-    />
-  )
 }

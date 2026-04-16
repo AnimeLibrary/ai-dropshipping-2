@@ -1,24 +1,16 @@
 import type { Metadata } from 'next'
-import { Inter, Outfit } from 'next/font/google'
 import { ClerkProvider } from '@clerk/nextjs'
 import '@/styles/globals.css'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 import StickyCTA from '@/components/layout/StickyCTA'
 import ThemeProvider from '@/components/layout/ThemeProvider'
+import AdsTrackingProvider from '@/components/layout/AdsTrackingProvider'
 import Analytics from '@/components/layout/Analytics'
+import SupportChat from '@/components/layout/SupportChat'
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-})
-
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-outfit',
-  display: 'swap',
-})
+// Notice: Google fonts disabled temporarily to prevent Next.js build crashes on slow hotspot connections.
+// Using system font fallbacks via globals.css for now.
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://vexsen.store'),
@@ -54,16 +46,19 @@ export default function RootLayout({
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <link rel="icon" href="/favicon.ico" />
         </head>
-        <body className={`${inter.variable} ${outfit.variable}`}>
-          <ThemeProvider>
-            <Analytics />
-            <Navbar />
-            <main id="main-content">
-              {children}
-            </main>
-            <StickyCTA />
-            <Footer />
-          </ThemeProvider>
+        <body>
+          <AdsTrackingProvider>
+            <ThemeProvider>
+              <Analytics />
+              <Navbar />
+              <main id="main-content">
+                {children}
+              </main>
+              <StickyCTA />
+              <SupportChat />
+              <Footer />
+            </ThemeProvider>
+          </AdsTrackingProvider>
         </body>
       </html>
     </ClerkProvider>

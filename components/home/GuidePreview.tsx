@@ -5,18 +5,12 @@ interface Props {
   clusters: KeywordCluster[]
 }
 
-// Converts raw keyword + painPoint into an emotional question.
-// Falls back to capitalizing keyword if no painPoint.
+// Converts raw keyword into a clean question.
 function toEmotionalQuestion(cluster: KeywordCluster): string {
-  if (cluster.painPoint) {
-    // If it already ends with a question mark, return as-is
-    if (cluster.painPoint.endsWith('?')) return cluster.painPoint
-    // Otherwise frame it as a question
-    return `Why ${cluster.painPoint.toLowerCase().replace(/^why /i, '')}?`
-  }
-  // Fallback: capitalize the keyword as-is
   if (!cluster.keyword) return 'How can we help?'
-  return cluster.keyword.charAt(0).toUpperCase() + cluster.keyword.slice(1) + '?'
+  let kw = cluster.keyword.charAt(0).toUpperCase() + cluster.keyword.slice(1)
+  if (!kw.endsWith('?')) kw += '?'
+  return kw
 }
 
 export default function GuidePreview({ clusters }: Props) {
@@ -83,25 +77,8 @@ export default function GuidePreview({ clusters }: Props) {
 
               <div className="flex-between">
                 <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                  <span
-                    style={{
-                      fontSize: 'var(--text-xs)',
-                      color: 'var(--color-text-muted)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {cluster.searchVolume.toLocaleString()} searches/mo
-                  </span>
-                  <span style={{ color: 'var(--color-border)' }}>·</span>
-                  <span
-                    style={{
-                      fontSize: 'var(--text-xs)',
-                      color: cluster.competition === 'low' ? 'var(--color-success)' : 'var(--color-text-muted)',
-                      fontWeight: 600,
-                      textTransform: 'capitalize',
-                    }}
-                  >
-                    {cluster.competition} competition
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    {cluster.searchVolume > 5000 ? '🔥 High demand' : cluster.trend === 'rising' ? '📈 Growing fast' : '📖 In-depth guide'}
                   </span>
                 </div>
                 <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
