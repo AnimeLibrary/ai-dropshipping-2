@@ -24,6 +24,33 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     setTheme(initial)
     document.documentElement.setAttribute('data-theme', initial)
     setMounted(true)
+
+    // Global scroll reveal logic
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible')
+          observer.unobserve(entry.target)
+        }
+      })
+    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' })
+
+    const setupObserver = () => {
+      document.querySelectorAll('.reveal:not(.visible)').forEach((el) => {
+        observer.observe(el)
+      })
+    }
+
+    setupObserver()
+
+    // Catch client-side route changes rendering new .reveal elements
+    const mutObserver = new MutationObserver(setupObserver)
+    mutObserver.observe(document.body, { childList: true, subtree: true })
+
+    return () => {
+      observer.disconnect()
+      mutObserver.disconnect()
+    }
   }, [])
 
   const toggle = () => {
