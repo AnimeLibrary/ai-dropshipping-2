@@ -2,21 +2,26 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 const isProtectedRoute = createRouteMatcher(['/account(.*)', '/admin(.*)', '/api/admin(.*)'])
 
-export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedRoute(request)) {
-    try {
-      const session = await auth()
-      if (!session.userId) {
-        return session.redirectToSignIn({ returnBackUrl: request.url })
+export default clerkMiddleware(
+  async (auth, request) => {
+    if (isProtectedRoute(request)) {
+      try {
+        const session = await auth()
+        if (!session.userId) {
+          return session.redirectToSignIn({ returnBackUrl: request.url })
+        }
+      } catch {
+        // Fallback redirect if edge session retrieval encounters missing environment keys on Vercel
+        const signInUrl = new URL('/account', request.url)
+        signInUrl.searchParams.set('redirect_url', request.url)
+        return Response.redirect(signInUrl)
       }
-    } catch {
-      // Fallback redirect if edge session retrieval encounters missing environment keys on Vercel
-      const signInUrl = new URL('/account', request.url)
-      signInUrl.searchParams.set('redirect_url', request.url)
-      return Response.redirect(signInUrl)
     }
+  },
+  {
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dWx0aW1hdGUtZWdyZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA',
   }
-})
+)
 
 export const config = {
   matcher: [
