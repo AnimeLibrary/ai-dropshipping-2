@@ -4,7 +4,14 @@ const isProtectedRoute = createRouteMatcher(['/account(.*)', '/admin(.*)', '/api
 
 export default clerkMiddleware(async (auth, request) => {
   if (isProtectedRoute(request)) {
-    await auth.protect()
+    try {
+      await auth.protect()
+    } catch (err) {
+      // If auth.protect() fails due to missing keys or token edge issues, cleanly redirect to login
+      const signInUrl = new URL('/account', request.url)
+      signInUrl.searchParams.set('redirect_url', request.url)
+      return Response.redirect(signInUrl)
+    }
   }
 })
 
