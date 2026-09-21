@@ -1,0 +1,57 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
+
+// PATCH /api/admin/products/[id] — Update product details directly
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
+  try {
+    const { id } = await params
+    const body = await req.json()
+
+    const { title, price, compareAtPrice, niche, shortDescription, validationStatus, heroImage, longDescription } = body
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: {
+        ...(title !== undefined && { title }),
+        ...(price !== undefined && { price: parseFloat(price) }),
+        ...(compareAtPrice !== undefined && { compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null }),
+        ...(niche !== undefined && { niche }),
+        ...(shortDescription !== undefined && { shortDescription }),
+        ...(validationStatus !== undefined && { validationStatus }),
+        ...(heroImage !== undefined && { heroImage }),
+        ...(longDescription !== undefined && { longDescription }),
+      },
+      include: { variants: true }
+    })
+
+    return NextResponse.json({ success: true, product: updated })
+  } catch (error: any) {
+    console.error('[admin/products PATCH]', error)
+    return NextResponse.json({ error: error.message || 'Failed to update product' }, { status: 500 })
+  }
+}
+
+// DELETE /api/admin/products/[id] — Permanently delete product from store
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
+  try {
+    const { id } = await params
+    await prisma.product.delete({ where: { id } })
+    return NextResponse.json({ success: true, message: 'Product deleted' })
+  } catch (error: any) {
+    console.error('[admin/products DELETE]', error)
+    return NextResponse.json({ error: error.message || 'Failed to delete product' }, { status: 500 })
+  }
+}

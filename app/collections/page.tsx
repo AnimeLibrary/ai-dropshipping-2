@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: 'Shop All Products | Vexsen',
   description:
     'Browse every curated product in the Vexsen catalog. Filtered by niche, sorted by trending. Every item is verified before it ships.',
+  alternates: {
+    canonical: '/collections',
+  },
 }
 
 export const dynamic = 'force-dynamic'

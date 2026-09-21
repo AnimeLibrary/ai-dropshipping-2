@@ -63,6 +63,7 @@ export default function ProductBuyBox({ product, variants }: Props) {
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(defaultVariant)
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultVariant?.color || null)
   const [selectedSize, setSelectedSize] = useState<string | null>(defaultVariant?.size || null)
+  const [quantity, setQuantity] = useState<number>(1)
 
   const hasVariants = variants.length > 1
   const colors = uniqueColors(variants)
@@ -234,22 +235,66 @@ export default function ProductBuyBox({ product, variants }: Props) {
           <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{product.shortDescription}</p>
         </div>
 
+        {/* Quantity Breaks / Bundle Tiers */}
+        <div style={{ marginBottom: 'var(--space-6)' }}>
+          <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-2)' }}>
+            Select Quantity & Bundle Savings:
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {[
+              { q: 1, label: 'Buy 1', tag: 'Standard', discount: 0 },
+              { q: 2, label: 'Buy 2', tag: 'Popular (15% OFF)', discount: 0.15 },
+              { q: 3, label: 'Buy 3', tag: 'Best Value (25% OFF)', discount: 0.25 },
+            ].map(tier => {
+              const unitPrice = activePrice * (1 - tier.discount)
+              const totalPrice = unitPrice * tier.q
+              const isSelected = quantity === tier.q
+              return (
+                <button
+                  key={tier.q}
+                  onClick={() => setQuantity(tier.q)}
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: 'var(--radius-md)',
+                    border: isSelected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+                    background: isSelected ? 'rgba(124,58,237,0.08)' : 'var(--color-bg-secondary)',
+                    cursor: 'pointer',
+                    textAlign: 'center',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: isSelected ? 'var(--color-accent)' : 'var(--color-text-primary)' }}>
+                    {tier.label}
+                  </div>
+                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-secondary)', marginTop: 2 }}>
+                    ${totalPrice.toFixed(2)}
+                  </div>
+                  <div style={{ fontSize: '9px', fontWeight: 700, color: tier.discount > 0 ? 'var(--color-success)' : 'var(--color-text-muted)', marginTop: 3 }}>
+                    {tier.tag}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
         {/* CTA */}
         {hasCheckout && !outOfStock ? (
-          <div style={{ position: 'relative', marginTop: 'var(--space-6)' }}>
+          <div style={{ position: 'relative', marginTop: 'var(--space-4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)', flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: 'var(--text-xs)', fontWeight: 700, color: '#b45309', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 'var(--radius-full)', padding: '3px 10px' }}>
                 🔥 Selling fast this week
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-success)' }}>
                 <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'var(--color-success)', flexShrink: 0 }} />
-                Ships within 24 hrs
+                ✓ Inspected & Tracked Delivery (7–12 Business Days)
               </span>
             </div>
             <CheckoutButton
               productId={product.id}
               title={`${product.title}${selectedVariant && !selectedVariant.isDefault ? ` — ${selectedVariant.label}` : ''}`}
               price={activePrice}
+              quantity={quantity}
               imageUrl={variantImage || product.heroImage || undefined}
               priceId={activeStripePriceId || undefined}
             />

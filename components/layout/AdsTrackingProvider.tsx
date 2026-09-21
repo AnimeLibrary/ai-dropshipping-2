@@ -1,7 +1,6 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
 
 interface AdsContextType {
   utmSource: string | null
@@ -24,7 +23,6 @@ export function useAdsTracking() {
 }
 
 export default function AdsTrackingProvider({ children }: { children: React.ReactNode }) {
-  const searchParams = useSearchParams()
   const [adsData, setAdsData] = useState<AdsContextType>({
     utmSource: null,
     utmMedium: null,
@@ -37,7 +35,7 @@ export default function AdsTrackingProvider({ children }: { children: React.Reac
     // Only run on client
     if (typeof window === 'undefined') return
 
-    // Read URL or fallback to sessionStorage
+    const searchParams = new URLSearchParams(window.location.search)
     const currentSource = searchParams.get('utm_source') || sessionStorage.getItem('utm_source')
     const currentMedium = searchParams.get('utm_medium') || sessionStorage.getItem('utm_medium')
     const currentCampaign = searchParams.get('utm_campaign') || sessionStorage.getItem('utm_campaign')
@@ -60,8 +58,7 @@ export default function AdsTrackingProvider({ children }: { children: React.Reac
     if (currentCampaign) sessionStorage.setItem('utm_campaign', currentCampaign)
     if (currentAdId) sessionStorage.setItem('ad_id', currentAdId)
     if (currentHook) sessionStorage.setItem('hook', currentHook)
-
-  }, [searchParams])
+  }, [])
 
   return (
     <AdsContext.Provider value={adsData}>

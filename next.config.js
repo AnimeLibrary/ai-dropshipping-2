@@ -5,8 +5,12 @@ const nextConfig = {
   typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-      { protocol: 'http', hostname: '**' },
+      { protocol: 'https', hostname: 'cjdropshipping.com' },
+      { protocol: 'https', hostname: '*.cjdropshipping.com' },
+      { protocol: 'https', hostname: 'cc-west-usa.oss-us-west-1.aliyuncs.com' },
+      { protocol: 'https', hostname: 'ae01.alicdn.com' },
+      { protocol: 'https', hostname: 'ae-pic-a1.aliexpress-media.com' },
+      { protocol: 'https', hostname: 'img.kwcdn.com' },
     ],
     formats: ['image/avif', 'image/webp'],
   },

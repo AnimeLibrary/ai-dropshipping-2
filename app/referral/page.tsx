@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useUser, SignInButton } from '@clerk/nextjs'
+import { useUser } from '@clerk/nextjs'
+import VexsenAuthButton from '@/components/auth/VexsenAuthButton'
 
 interface ReferralData {
   code: string
@@ -47,11 +48,7 @@ export default function ReferralPage() {
           <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-lg)', lineHeight: 1.7, marginBottom: 'var(--space-8)' }}>
             Share your unique promo code. When a friend buys using it, they get <strong>15% off</strong> and you earn <strong>store credits</strong>.
           </p>
-          <SignInButton mode="modal">
-            <button className="btn btn-primary btn-lg" style={{ width: '100%' }}>
-              Sign in to get your code →
-            </button>
-          </SignInButton>
+          <VexsenAuthButton fullWidth label="Sign in to get your code" />
         </div>
       </main>
     )

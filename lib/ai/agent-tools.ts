@@ -470,7 +470,7 @@ import Stripe from 'stripe'
 
 // Stripe is optional but needed for checkout. Will fail gracefully if no key.
 const stripe = process.env.STRIPE_SECRET_KEY 
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' }) 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' as any }) 
   : null
 
 async function toolApproveProduct(productId: string, notes?: string): Promise<ToolResult> {

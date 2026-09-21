@@ -1,7 +1,7 @@
 import { prisma } from './lib/db/prisma';
 import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2023-10-16' });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, { apiVersion: '2024-04-10' as any });
 
 async function fix() {
   const p = await prisma.product.findFirst();

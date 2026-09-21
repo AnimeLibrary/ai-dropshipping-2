@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { AIClient } from '@/lib/ai/ai-client'
+import { requireAdminOrCron } from '@/lib/auth/admin'
 
 /**
  * CRON: Analytics Sync & AI Feedback Loop
@@ -13,6 +14,9 @@ import { AIClient } from '@/lib/ai/ai-client'
  * 3. Updates the DB automatically.
  */
 export async function GET(req: Request) {
+  const unauthorized = await requireAdminOrCron(req)
+  if (unauthorized) return unauthorized
+
   // 1. Security check (In production, use a CRON_SECRET header)
   const authHeader = req.headers.get('authorization')
   if (process.env.NODE_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

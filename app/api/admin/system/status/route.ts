@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
 /**
  * GET /api/admin/system/status
@@ -7,6 +8,9 @@ import { prisma } from '@/lib/db/prisma'
  * No fake toggles. Every check is a real HTTP ping or null check.
  */
 export async function GET() {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   const checks = await Promise.allSettled([
     pingLMStudio(),
     pingStripe(),
@@ -19,10 +23,11 @@ export async function GET() {
     STRIPE_SECRET_KEY:      !!process.env.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET:  !!process.env.STRIPE_WEBHOOK_SECRET,
     DATABASE_URL:           !!process.env.DATABASE_URL,
+    CJ_EMAIL:               !!process.env.CJ_EMAIL,
+    CJ_API_KEY:             !!process.env.CJ_API_KEY,
     AUTODS_API_KEY:         !!process.env.AUTODS_API_KEY,
     RESEND_API_KEY:         !!process.env.RESEND_API_KEY,
     SERPER_API_KEY:         !!process.env.SERPER_API_KEY,
-    AI_API_ENDPOINT:        !!process.env.AI_API_ENDPOINT,
     ADMIN_EMAIL:            !!process.env.ADMIN_EMAIL,
   }
 
@@ -35,7 +40,7 @@ export async function GET() {
     overallHealth: criticalMissing.length === 0 ? 'operational' : 'degraded',
     criticalMissing,
     services: {
-      lmStudio: lmStudio.status === 'fulfilled' ? lmStudio.value : { status: 'offline', error: String(lmStudio.reason) },
+      lmStudio: lmStudio.status === 'fulfilled' ? lmStudio.value : { status: 'optional (disabled)', latencyMs: 0 },
       stripe:   stripe.status   === 'fulfilled' ? stripe.value   : { status: 'offline', error: String(stripe.reason) },
       database: database.status === 'fulfilled' ? database.value : { status: 'offline', error: String(database.reason) },
     },
@@ -44,17 +49,17 @@ export async function GET() {
 }
 
 async function pingLMStudio() {
-  const endpoint = process.env.AI_API_ENDPOINT || 'http://172.20.10.11:1234'
+  const endpoint = process.env.AI_API_ENDPOINT || 'http://127.0.0.1:1234'
   const start = Date.now()
   try {
     const res = await fetch(`${endpoint}/v1/models`, {
       headers: { Authorization: `Bearer ${process.env.AI_API_KEY || ''}` },
-      signal: AbortSignal.timeout(3000)
+      signal: AbortSignal.timeout(1500)
     })
     const data = await res.json().catch(() => ({}))
-    return { status: res.ok ? 'online' : 'error', latencyMs: Date.now() - start, model: data?.data?.[0]?.id || 'unknown' }
-  } catch (e: any) {
-    throw new Error(`LM Studio unreachable: ${e.message}`)
+    return { status: res.ok ? 'online' : 'optional (disabled)', latencyMs: Date.now() - start, model: data?.data?.[0]?.id || 'none' }
+  } catch {
+    return { status: 'optional (disabled)', latencyMs: 0, model: 'not running' }
   }
 }
 

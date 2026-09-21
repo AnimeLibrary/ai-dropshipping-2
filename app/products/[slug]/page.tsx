@@ -7,23 +7,28 @@ import ReviewForm from '@/components/commerce/ReviewForm'
 import ProductBuyBox from '@/components/commerce/ProductBuyBox'
 
 interface Props {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const product = await prisma.product.findUnique({ where: { slug: params.slug } })
+  const { slug } = await params
+  const product = await prisma.product.findUnique({ where: { slug } })
   if (!product) return {}
   return {
     title: `${product.title} | Vexsen`,
     description: product.shortDescription || `Discover the solution: ${product.title}`,
+    alternates: {
+      canonical: `/products/${slug}`,
+    },
   }
 }
 
 export default async function ProductPage({ params }: Props) {
+  const { slug } = await params
   const rawProduct = await prisma.product.findUnique({
-    where: { slug: params.slug },
+    where: { slug },
     include: {
       variants: {
         orderBy: [{ isDefault: 'desc' }, { cjStock: 'desc' }]

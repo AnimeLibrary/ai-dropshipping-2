@@ -110,7 +110,7 @@ export function generateProblemContent(cluster: KeywordCluster): GeneratedPageCo
 
     faq: generateFaq(cluster),
 
-    internalLinks: cluster.relatedSlugs.map((slug) => ({
+    internalLinks: ((cluster.relatedSlugs || cluster.relatedPages || []) as string[]).map((slug: string) => ({
       label: toTitleCase(slug.replace(/-/g, ' ')),
       href: `/problems/${slug}`,
     })),
@@ -143,7 +143,7 @@ export function generateSolutionContent(cluster: KeywordCluster): GeneratedPageC
 
     faq: generateFaq(cluster),
 
-    internalLinks: cluster.relatedSlugs.map((slug) => ({
+    internalLinks: ((cluster.relatedSlugs || cluster.relatedPages || []) as string[]).map((slug: string) => ({
       label: toTitleCase(slug.replace(/-/g, ' ')),
       href: `/solutions/${slug}`,
     })),

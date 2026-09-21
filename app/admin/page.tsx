@@ -26,7 +26,16 @@ export default async function AdminPage() {
         id:true, customerName:true, customerEmail:true, status:true,
         totalAmount:true, trackingNumber:true, createdAt:true,
         items: {
-          select: { productId:true, supplierUrl:true, quantity:true, priceAtSale:true, cjVariantId:true }
+          select: {
+            productId: true,
+            supplierUrl: true,
+            quantity: true,
+            priceAtSale: true,
+            cjVariantId: true,
+            product: {
+              select: { title: true, supplierPrice: true }
+            }
+          }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -88,6 +97,8 @@ export default async function AdminPage() {
       cjVariantId: item.cjVariantId ?? null,
       quantity: item.quantity,
       priceAtSale: item.priceAtSale,
+      productTitle: item.product?.title || 'Product',
+      supplierPrice: item.product?.supplierPrice || 0,
     }))
   }))
 

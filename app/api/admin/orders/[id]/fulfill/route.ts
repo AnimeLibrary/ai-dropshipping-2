@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
 /**
  * GET /api/admin/orders/[id]/fulfill
@@ -9,10 +10,14 @@ import { prisma } from '@/lib/db/prisma'
  */
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
+  const { id } = await params
   const order = await prisma.order.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: { items: true }
   })
 
@@ -51,13 +56,17 @@ export async function GET(
  */
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
+  const { id } = await params
   const body = await req.json()
   const { status, trackingNumber } = body
 
   const updated = await prisma.order.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       status: status || 'shipped',
       trackingNumber: trackingNumber || null,
@@ -69,7 +78,7 @@ export async function PATCH(
     data: {
       level: 'info',
       source: 'fulfillment:manual',
-      message: `Order #${params.id} manually updated to status: ${status || 'shipped'}`,
+      message: `Order #${id} manually updated to status: ${status || 'shipped'}`,
     }
   })
 

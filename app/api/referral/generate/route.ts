@@ -13,7 +13,7 @@ function generateCode(name: string): string {
 
 export async function POST() {
   try {
-    const { userId } = auth()
+    const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
     const user = await currentUser()

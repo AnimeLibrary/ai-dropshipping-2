@@ -59,12 +59,15 @@ async function main() {
   ]
 
   for (const p of products) {
+    const { aiContent, description, ...rest } = p as any
     await prisma.product.upsert({
       where: { slug: p.slug },
       update: {},
       create: {
-        ...p,
-        aiContent: p.aiContent as any, // Cast for JSON field
+        ...rest,
+        niche: p.category,
+        shortDescription: description,
+        longDescription: JSON.stringify(aiContent),
       }
     })
     console.log(`✓ Seeded: ${p.title}`)

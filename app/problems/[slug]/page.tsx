@@ -4,16 +4,17 @@ import { prisma } from '@/lib/db/prisma'
 
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  const title = params.slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const title = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
   return {
     title: `${title} Solutions | Vexsen`,
     description: `Expert-curated products to solve ${title.toLowerCase()} permanently. Stop buying temporary fixes.`,
   }
 }
 
-export default async function ProblemCategoryPage({ params }: { params: { slug: string } }) {
-  const { slug } = params
+export default async function ProblemCategoryPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   
   // Find products that match this niche/problem area
   const products = await prisma.product.findMany({

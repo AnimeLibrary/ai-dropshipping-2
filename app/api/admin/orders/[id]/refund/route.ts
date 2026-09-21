@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2024-04-10' as any
 })
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   try {
-    const { id: orderId } = params
+    const { id: orderId } = await params
     const { action } = await req.json() // 'refund' | 'store_credit'
 
     if (!orderId) return NextResponse.json({ error: 'Order ID required' }, { status: 400 })

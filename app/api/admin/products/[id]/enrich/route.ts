@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { enrichProductWithAI } from '@/lib/ai/agent-tools'
+import { requireAdmin } from '@/lib/auth/admin'
 
 /**
  * POST /api/admin/products/[id]/enrich
@@ -10,8 +11,11 @@ import { enrichProductWithAI } from '@/lib/ai/agent-tools'
  * 2. Finds best product images via Serper image search
  * 3. Updates the DB record in place
  */
-export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const { id } = params
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
+  const { id } = await params
 
   const product = await prisma.product.findUnique({ where: { id } })
   if (!product) {
@@ -34,6 +38,6 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       hook: result.data.hook,
     },
     serperUsed: result.data.serperUsed,
-    message: `✅ "${product.title}" enriched with AI copy${result.data.heroImage ? ' and new product image' : ''}.`
+    message: `âœ… "${product.title}" enriched with AI copy${result.data.heroImage ? ' and new product image' : ''}.`
   })
 }

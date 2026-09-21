@@ -1,9 +1,13 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { searchCjProducts, getCjProductDetails } from '@/lib/cj-api'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
 
 export async function POST(req: Request) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   try {
     const { productId, keyword } = await req.json()
 

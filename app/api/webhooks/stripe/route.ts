@@ -16,7 +16,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
  */
 export async function POST(req: Request) {
   const body = await req.text()
-  const sig = headers().get('Stripe-Signature') as string
+  const headersList = await headers()
+  const sig = headersList.get('Stripe-Signature') as string
 
   let event: Stripe.Event
 
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
           customerPhone: session.customer_details?.phone || null,
           totalAmount: (session.amount_total || 0) / 100,
           status: 'processing',
-          orderItems: {
+          items: {
             create: await Promise.all(lineItems.map(async (item) => {
               const stripeProduct = item.price?.product as Stripe.Product | undefined
               const internalId = stripeProduct?.metadata?.productId || 'unknown'

@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 
 interface Product {
@@ -69,21 +68,33 @@ export default function ProductCard({ product, index = 0 }: Props) {
       <Link href={`/products/${product.slug}`} tabIndex={-1} aria-hidden="true" style={{ display: 'block' }}>
         <div className="product-card-image" style={{ aspectRatio: '1/1', position: 'relative' }}>
           {displayImage && displayImage !== '/placeholder.png' ? (
-            <Image
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
               src={displayImage}
               alt={product.title}
-              fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              style={{ objectFit: 'cover' }}
+              loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
             <div style={{
               width: '100%', height: '100%',
-              background: 'linear-gradient(135deg, var(--color-bg-secondary), var(--color-border))',
+              background: '#0e0e16',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '3rem'
             }}>
-              🛍️
+              <svg width="40" height="40" viewBox="0 0 512 512" fill="none">
+                <path
+                  d="M120 130 L220 130 L256 260 L292 130 L392 130 L296 382 C280 422 232 422 216 382 Z"
+                  fill="url(#cardVexGrad)"
+                />
+                <path d="M256 310 L280 180 L232 180 Z" fill="#0b0b10" opacity="0.9" />
+                <defs>
+                  <linearGradient id="cardVexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#8b5cf6" />
+                    <stop offset="50%" stopColor="#ec4899" />
+                    <stop offset="100%" stopColor="#f43f5e" />
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
           )}
 
@@ -94,15 +105,15 @@ export default function ProductCard({ product, index = 0 }: Props) {
                 background: '#dc2626', color: '#fff',
                 fontSize: '10px', fontWeight: 800,
                 padding: '3px 8px', borderRadius: '999px',
-                letterSpacing: '0.06em', textTransform: 'uppercase'
-              }}>🔥 Trending</span>
+                letterSpacing: 0, textTransform: 'uppercase'
+              }}>Trending</span>
             )}
             {isNew && !isTrending && (
               <span style={{
                 background: 'var(--color-accent)', color: '#fff',
                 fontSize: '10px', fontWeight: 800,
                 padding: '3px 8px', borderRadius: '999px',
-                letterSpacing: '0.06em', textTransform: 'uppercase'
+                letterSpacing: 0, textTransform: 'uppercase'
               }}>New</span>
             )}
             {savings && savings >= 15 && (
@@ -122,7 +133,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
               padding: '8px 20px', borderRadius: 'var(--radius-md)',
               fontWeight: 700, fontSize: 'var(--text-sm)'
             }}>
-              View Product →
+              View Product &rarr;
             </span>
           </div>
         </div>
@@ -132,7 +143,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
         {/* Niche tag */}
         <p style={{
           fontSize: '0.7rem', color: 'var(--color-accent)',
-          textTransform: 'uppercase', letterSpacing: '0.1em',
+          textTransform: 'uppercase', letterSpacing: 0,
           fontWeight: 700, marginBottom: 4
         }}>
           {(product.category || product.niche).replace(/-/g, ' ')}
@@ -168,7 +179,7 @@ export default function ProductCard({ product, index = 0 }: Props) {
         {/* Stars placeholder */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 10 }}>
           {Array.from({ length: 5 }).map((_, i) => (
-            <span key={i} style={{ color: '#F59E0B', fontSize: '0.75rem' }}>★</span>
+            <span key={i} style={{ color: '#F59E0B', fontSize: '0.75rem' }}>&#9733;</span>
           ))}
           <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>(47+)</span>
         </div>

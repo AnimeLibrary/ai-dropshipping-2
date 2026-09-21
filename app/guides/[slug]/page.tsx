@@ -9,7 +9,7 @@ import StickyCTA from '@/components/layout/StickyCTA'
 import BundleShowcase from '@/components/commerce/BundleShowcase'
 
 interface Props {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 // Generate all guide pages at build time
@@ -23,8 +23,9 @@ export async function generateStaticParams() {
 
 // Dynamic metadata per guide
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
   const cluster = await prisma.keywordCluster.findUnique({
-    where: { targetSlug: params.slug }
+    where: { targetSlug: slug }
   })
 
   if (!cluster) return {}
@@ -32,13 +33,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: content.metaTitle,
     description: content.metaDescription,
+    alternates: {
+      canonical: `/guides/${slug}`,
+    },
   }
 }
 
 export default async function GuidePage({ params }: Props) {
+  const { slug } = await params
   const cluster = await prisma.keywordCluster.findUnique({
     where: { 
-      targetSlug: params.slug,
+      targetSlug: slug,
       targetPageType: 'guide'
     },
     include: {
@@ -63,12 +68,12 @@ export default async function GuidePage({ params }: Props) {
   const featuredBundle = (relatedProducts[0] as any)?.bundles?.[0]
 
   const schemas = [
-    articleSchema({ title: content.h1, description: content.metaDescription, slug: params.slug, section: 'guides' }),
+    articleSchema({ title: content.h1, description: content.metaDescription, slug, section: 'guides' }),
     faqSchema(content.faq),
     breadcrumbSchema([
       { name: 'Home', href: '/' },
       { name: 'Guides', href: '/guides' },
-      { name: content.h1, href: `/guides/${params.slug}` },
+      { name: content.h1, href: `/guides/${slug}` },
     ]),
   ]
 // ... [Remaining UI code stays the same]

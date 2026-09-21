@@ -1,9 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // GET /api/admin/products?status=all&search=xxx
 // Used by the admin dashboard "All Products" database tab
 export async function GET(req: NextRequest) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   try {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status') || 'all'

@@ -4,6 +4,8 @@
  * Supports: best-seller discovery, full variant fetch, background price sync
  */
 
+import { prisma } from '@/lib/db/prisma'
+
 const CJ_BASE = 'https://developers.cjdropshipping.com/api2.0/v1'
 
 // Our store's focus niches — Llama will automatically search these
@@ -115,6 +117,86 @@ export class CJService {
   /** Backward-compat alias */
   async getProduct(pid: string) {
     return this.getFullProductWithVariants(pid)
+  }
+
+  /**
+   * Directly imports a CJ product by PID into the Prisma database with all variants and suppliers.
+   */
+  async importProduct(pid: string, niche = 'general', markupFactor = 2.5) {
+    const full = await this.getFullProductWithVariants(pid)
+    if (!full) throw new Error(`CJ product ${pid} not found`)
+
+    // Check if already in DB
+    const existing = await prisma.product.findFirst({
+      where: { cjProductId: pid },
+      include: { variants: true }
+    })
+    if (existing) {
+      return existing
+    }
+
+    const baseSlug = full.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 45) || 'product'
+    const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`
+
+    const retailPrice = Math.round(full.supplierPrice * markupFactor * 100) / 100
+    const compareAtPrice = Math.round(retailPrice * 1.5 * 100) / 100
+
+    const created = await prisma.product.create({
+      data: {
+        slug,
+        title: full.title,
+        shortDescription: `Curated high-performance ${niche.replace(/-/g, ' ')} solution. Engineered for durability, maximum comfort, and verified results.`,
+        category: full.categoryName || 'General',
+        niche,
+        price: retailPrice,
+        compareAtPrice,
+        supplierPrice: full.supplierPrice,
+        heroImage: full.images && full.images.length > 0 ? JSON.stringify(full.images) : full.image,
+        trendScore: 88,
+        source: 'CJ Dropshipping',
+        validationStatus: 'pending',
+        cjProductId: full.pid,
+        cjVariantId: full.variants[0]?.vid || null,
+        cjVariants: full.variants as any,
+        cjSalesRank: full.salesVolume || null,
+        cjSupplierScore: full.supplierScore || null,
+        cjLastSyncedAt: new Date(),
+        variants: {
+          create: full.variants.map((v, idx) => ({
+            vid: v.vid,
+            sku: v.sku,
+            label: v.label,
+            color: v.color || null,
+            size: v.size || null,
+            supplierPrice: v.supplierPrice,
+            retailPrice: Math.round(v.supplierPrice * markupFactor * 100) / 100,
+            cjStock: v.stock,
+            image: v.image || full.image,
+            isDefault: idx === 0,
+          }))
+        },
+        suppliers: {
+          create: {
+            name: 'CJ Dropshipping',
+            url: `https://cjdropshipping.com/product/${full.pid}.html`,
+            price: full.supplierPrice,
+            shippingDays: full.shippingDays || 10,
+            isReliable: true,
+            isCheapest: true
+          }
+        }
+      },
+      include: {
+        variants: true,
+        suppliers: true
+      }
+    })
+
+    return created
   }
 
   // ─── 3. PRICE + STOCK REFRESH (lightweight) ─────────────────
@@ -247,7 +329,7 @@ export class CJService {
     if (p.productImage) images.push(p.productImage)
     if (Array.isArray(p.productImages)) images.push(...p.productImages)
     if (Array.isArray(p.imageList)) images.push(...p.imageList.map((i: any) => i.imageUrl || i).filter(Boolean))
-    const uniqueImages = [...new Set(images)] as string[]
+    const uniqueImages = images.filter((v, i, a) => a.indexOf(v) === i)
 
     return {
       pid: String(p.pid || p.productId || ''),

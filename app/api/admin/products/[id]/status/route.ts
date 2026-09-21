@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import Stripe from 'stripe'
+import { requireAdmin } from '@/lib/auth/admin'
 
 type Action = 'approve' | 'reject'
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = params
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
+  const { id } = await params
   const body = await req.json() as { action: Action; notes?: string }
   const { action, notes } = body
 
@@ -24,7 +28,7 @@ export async function POST(
     return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   }
 
-  // ── REJECT ───────────────────────────────────────────────────
+  // â”€â”€ REJECT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (action === 'reject') {
     const updated = await prisma.product.update({
       where: { id },
@@ -34,20 +38,20 @@ export async function POST(
       data: {
         level: 'warn',
         source: 'admin:product-status',
-        message: `Product "${updated.title}" → archived`,
+        message: `Product "${updated.title}" â†’ archived`,
         meta: JSON.stringify({ productId: id, action, notes })
       }
     })
     return NextResponse.json({ success: true, product: { id: updated.id, title: updated.title, validationStatus: 'archived' } })
   }
 
-  // ── APPROVE ──────────────────────────────────────────────────
+  // â”€â”€ APPROVE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let stripeProductId = product.stripeProductId
   let defaultStripePriceId = product.stripePriceId
 
   if (!stripeProductId && process.env.STRIPE_SECRET_KEY) {
     try {
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' })
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' as any })
 
       // Parse gallery images safely
       let imageUrls: string[] = []
@@ -68,7 +72,7 @@ export async function POST(
       })
       stripeProductId = stripeProd.id
 
-      // 2. If product has variants → create one Stripe Price per variant
+      // 2. If product has variants â†’ create one Stripe Price per variant
       if (product.variants.length > 0) {
         for (const variant of product.variants) {
           try {
@@ -104,7 +108,7 @@ export async function POST(
           defaultStripePriceId = firstVariant?.stripeVariantPriceId || null
         }
       } else {
-        // No variants → create a single price on the product
+        // No variants â†’ create a single price on the product
         const singlePrice = await stripe.prices.create({
           product: stripeProd.id,
           unit_amount: Math.round(product.price * 100),
@@ -139,7 +143,7 @@ export async function POST(
     data: {
       level: 'info',
       source: 'admin:product-status',
-      message: `Product "${updated.title}" → approved. Stripe: ${stripeProductId ? '✅ synced' : '⚠️ skipped'}. Variants: ${updated.variants.length}`,
+      message: `Product "${updated.title}" â†’ approved. Stripe: ${stripeProductId ? 'âœ… synced' : 'âš ï¸ skipped'}. Variants: ${updated.variants.length}`,
       meta: JSON.stringify({ productId: id, action, notes, stripeProductId, variantCount: updated.variants.length })
     }
   })

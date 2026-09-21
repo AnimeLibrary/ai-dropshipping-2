@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next'
+import { absoluteUrl } from '@/lib/config/site'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,12 +8,10 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: [
         '/admin',
-        '/api',
+        '/api/',
         '/account',
-        '/_next',
-        '/static',
       ],
     },
-    sitemap: 'https://ai-dropshipping-2-nine.vercel.app/sitemap.xml',
+    sitemap: absoluteUrl('/sitemap.xml'),
   }
 }

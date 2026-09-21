@@ -72,9 +72,8 @@ const stockService = new StockService()
         }, { status: 422 })
       }
   
-      // 4. Create Stripe Session
+      // 4. Create Stripe Session with Auto Payment Methods (Apple Pay, Google Pay, Card) + Phone for CJ
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
         line_items: [
           {
             price: activeStripePriceId,
@@ -86,6 +85,9 @@ const stockService = new StockService()
         cancel_url: `${SITE_URL}/products/${product.slug}`,
         shipping_address_collection: {
           allowed_countries: ['US', 'CA', 'GB', 'AU'],
+        },
+        phone_number_collection: {
+          enabled: true,
         },
         metadata: {
           internal_product_id: product.id,

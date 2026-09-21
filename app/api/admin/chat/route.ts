@@ -3,16 +3,17 @@ import { WORKFLOW_SYSTEM_PROMPT } from '@/lib/ai/workflow-context'
 import { AGENT_TOOLS, executeTool } from '@/lib/ai/agent-tools'
 import { prisma } from '@/lib/db/prisma'
 import os from 'os'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // ============================================================
-// AGENTIC CHAT ENDPOINT — REACT EXECUTION LOOP
+// AGENTIC CHAT ENDPOINT â€” REACT EXECUTION LOOP
 // Llama 3.1 8B calls real tools (CSV import, DB writes, approvals)
 // in an iterative loop until the task is complete.
 // ============================================================
 
 /**
  * Auto-detects the LM Studio host IP.
- * Priority: env var → any active local network IP → localhost
+ * Priority: env var â†’ any active local network IP â†’ localhost
  * This fixes hotspot IP changes without touching .env every time.
  */
 function getAIBaseUrl(): string {
@@ -41,34 +42,34 @@ ${WORKFLOW_SYSTEM_PROMPT}
 
 ## WHO YOU ARE
 
-You are Vexsen — the AI Operations Director for a dropshipping business. You're smart, helpful, and direct. You can hold normal conversations, answer questions, give advice, brainstorm ideas, and also manage the entire store database.
+You are Vexsen â€” the AI Operations Director for a dropshipping business. You're smart, helpful, and direct. You can hold normal conversations, answer questions, give advice, brainstorm ideas, and also manage the entire store database.
 
 ## YOUR PERSONALITY
 
-- Be natural and conversational — you're a business partner, not a robot
+- Be natural and conversational â€” you're a business partner, not a robot
 - Keep responses clear and concise
 - Use emojis sparingly when it fits
-- If the user just wants to chat, talk, or ask questions — do that. Not everything is a command.
+- If the user just wants to chat, talk, or ask questions â€” do that. Not everything is a command.
 - If you don't know something, say so honestly
 
 ## YOUR CAPABILITIES (USE TOOLS WHEN RELEVANT)
 
 ### Product Sourcing (CJ Dropshipping)
-- User asks to find/search products → Call \`search_cj_products\` with relevant keywords
-- User picks a product from results → Call \`import_cj_product\` to add it to the store
-- User asks about shipping → Call \`get_cj_shipping\`
+- User asks to find/search products â†’ Call \`search_cj_products\` with relevant keywords
+- User picks a product from results â†’ Call \`import_cj_product\` to add it to the store
+- User asks about shipping â†’ Call \`get_cj_shipping\`
 
 ### Data Import
-- CSV data pasted → Call \`import_csv_data\` immediately
-- URL posted → Call \`scrape_url\` to read the page, then act on what you find
-- Raw product text pasted → Call \`add_product_manual\`
+- CSV data pasted â†’ Call \`import_csv_data\` immediately
+- URL posted â†’ Call \`scrape_url\` to read the page, then act on what you find
+- Raw product text pasted â†’ Call \`add_product_manual\`
 
 ### Product Management
-- After any product is created/imported → Call \`analyze_product\` on it
-- User says "approve [id]" → Call \`approve_product\`
-- User says "reject [id] [reason]" → Call \`reject_product\`
-- User asks about pending products → Call \`list_pending_products\`
-- User asks about store stats/status → Call \`get_store_metrics\`
+- After any product is created/imported â†’ Call \`analyze_product\` on it
+- User says "approve [id]" â†’ Call \`approve_product\`
+- User says "reject [id] [reason]" â†’ Call \`reject_product\`
+- User asks about pending products â†’ Call \`list_pending_products\`
+- User asks about store stats/status â†’ Call \`get_store_metrics\`
 
 ### After Analysis, Present This Report:
 
@@ -76,7 +77,7 @@ You are Vexsen — the AI Operations Director for a dropshipping business. You'r
 **Product:** [title] | **ID:** [id] | **Source:** [source]
 
 ### Pricing
-- Supplier Cost → Retail Price → Net Profit (margin%)
+- Supplier Cost â†’ Retail Price â†’ Net Profit (margin%)
 
 ### CJ Dropshipping
 - Product linked: yes/no
@@ -90,7 +91,7 @@ You are Vexsen — the AI Operations Director for a dropshipping business. You'r
 ## RULES & FATAL ERRORS TO AVOID
 - **CRITICAL**: NEVER tell the user to "call a tool" or use a command (e.g. do NOT say "You need to call search_cj_products"). The user cannot execute tools. YOU must execute the tools automatically behind the scenes. If the user says "find me top 10 products", YOU trigger the search_cj_products tool immediately.
 - **CRITICAL**: If you return results from a search, ask the user which one they like. Once they reply, YOU trigger the \`import_cj_product\` tool. Do not ask them to type a command.
-- When the user mentions product ideas, niches, or categories — proactively use your tools to search CJ.
+- When the user mentions product ideas, niches, or categories â€” proactively use your tools to search CJ.
 - Always include CJ Product ID and Variant ID in reports.
 - If CJ API is not configured, inform the user to add it to their .env file.
 - Be autonomous. Do the heavy lifting for the user.
@@ -105,12 +106,15 @@ interface ChatMessage {
 }
 
 export async function POST(req: NextRequest) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   try {
     const { messages } = await req.json() as { messages: ChatMessage[] }
 
     // Remove the initial UI welcome message from history to prevent LM Studio Jinja template crashes 
     let filteredMessages = messages
-      .filter(m => !(m.role === 'assistant' && m.content.includes('Vexsen AI Agent — Online')))
+      .filter(m => !(m.role === 'assistant' && m.content.includes('Vexsen AI Agent â€” Online')))
       .slice(-6)
 
     // LM Studio Llama 3 formatting STRICTLY requires the first non-system message to be from a 'user'
@@ -123,7 +127,7 @@ export async function POST(req: NextRequest) {
       ...filteredMessages
     ]
 
-    // ─── PRE-PROCESS: URL DETECTION & SERVER-SIDE SCRAPE ───────
+    // â”€â”€â”€ PRE-PROCESS: URL DETECTION & SERVER-SIDE SCRAPE â”€â”€â”€â”€â”€â”€â”€
     const lastUserMsg = filteredMessages.filter(m => m.role === 'user').at(-1)
     if (lastUserMsg) {
       const urlMatch = lastUserMsg.content.trim().match(/https?:\/\/[^\s]+/)
@@ -138,10 +142,10 @@ export async function POST(req: NextRequest) {
         let scrapedContext = ''
 
         if (isKalodata) {
-          // Kalodata is Cloudflare-protected — no scraper can access it.
+          // Kalodata is Cloudflare-protected â€” no scraper can access it.
           // Guide the AI to instruct the user on the CSV export instead.
           scrapedContext = `
-[AUTO-SYSTEM — KALODATA URL DETECTED]
+[AUTO-SYSTEM â€” KALODATA URL DETECTED]
 Kalodata blocks all automated scraping with Cloudflare protection. The URL cannot be scraped automatically.
 Instead, provide the user with these exact steps to get the data:
 1. On the Kalodata product page they linked, click the "Export" button (top right)
@@ -150,8 +154,8 @@ Instead, provide the user with these exact steps to get the data:
 4. You will then import and analyze it automatically
 
 Also tell them: for TikTok product research without accounts or paid tools, they can use:
-- TikTok Creative Center (ads.tiktok.com/business/creativecenter/inspiration/topads) — official free tool
-- AliExpress Dropshipping Center — free sales volume data
+- TikTok Creative Center (ads.tiktok.com/business/creativecenter/inspiration/topads) â€” official free tool
+- AliExpress Dropshipping Center â€” free sales volume data
 `
         } else if (isTikTok || isAliExpress || isCJ) {
           // Attempt real fetch for non-Cloudflare sites
@@ -167,12 +171,12 @@ Also tell them: for TikTok product research without accounts or paid tools, they
             const html = await res.text()
             // Strip HTML tags and excess whitespace
             const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 3000)
-            scrapedContext = `[AUTO-SYSTEM — PAGE SCRAPED]\nURL: ${url}\nContent excerpt:\n${text}\n\nAnalyze this product data and create a full PRODUCT INTEL REPORT.`
+            scrapedContext = `[AUTO-SYSTEM â€” PAGE SCRAPED]\nURL: ${url}\nContent excerpt:\n${text}\n\nAnalyze this product data and create a full PRODUCT INTEL REPORT.`
           } catch {
-            scrapedContext = `[AUTO-SYSTEM — SCRAPE FAILED]\nURL: ${url}\nThe page could not be fetched. Ask the user to copy-paste the product details manually.`
+            scrapedContext = `[AUTO-SYSTEM â€” SCRAPE FAILED]\nURL: ${url}\nThe page could not be fetched. Ask the user to copy-paste the product details manually.`
           }
         } else {
-          // Generic URL — attempt fetch
+          // Generic URL â€” attempt fetch
           try {
             const res = await fetch(url, {
               headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -180,9 +184,9 @@ Also tell them: for TikTok product research without accounts or paid tools, they
             })
             const html = await res.text()
             const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 2000)
-            scrapedContext = `[AUTO-SYSTEM — PAGE SCRAPED]\nURL: ${url}\nContent:\n${text}\n\nAnalyze any product data found and create a PRODUCT INTEL REPORT.`
+            scrapedContext = `[AUTO-SYSTEM â€” PAGE SCRAPED]\nURL: ${url}\nContent:\n${text}\n\nAnalyze any product data found and create a PRODUCT INTEL REPORT.`
           } catch {
-            scrapedContext = `[AUTO-SYSTEM — SCRAPE FAILED for ${url}]\nAsk the user to paste the product data manually.`
+            scrapedContext = `[AUTO-SYSTEM â€” SCRAPE FAILED for ${url}]\nAsk the user to paste the product data manually.`
           }
         }
 
@@ -250,25 +254,7 @@ Also tell them: for TikTok product research without accounts or paid tools, they
             for (const cjId of idsToImport.slice(0, 2)) {
                const imported = await cj.importProduct(cjId, 'general')
                if (imported) {
-                 const rawPrice = String(imported.sellPrice || 10)
-                 const parsedPrice = parseFloat(rawPrice.split('-')[0])
-                 const finalPrice = isNaN(parsedPrice) ? 10 : parsedPrice
-                 
-                 await prisma.product.create({
-                   data: {
-                     title: imported.productNameEn || 'CJ Dropshipping Product',
-                     price: finalPrice * 2.5, // Quick retail markup default for intercept
-                     supplierCost: finalPrice,
-                     status: 'pending',
-                     margin: 0,
-                     profit: 0,
-                     originalUrl: `https://cjdropshipping.com/product/${cjId}`,
-                     sourceStore: 'CJ Dropshipping',
-                     cjProductId: cjId,
-                     cjVariantId: imported.variantId || null
-                   }
-                 })
-                 results.push(`Success - ID: ${cjId}`)
+                 results.push(`Success - ID: ${cjId} (${imported.title})`)
                }
             }
             lastUserMsg.content = `User asked to import products.\n\n[AUTO-SYSTEM IMPORT SUCCESS]: I automatically imported these items directly to the database: ${results.join(', ')}.\n\nTell the user: "I bypassed the standard tools and directly imported those products! You can view them right now at http://localhost:3000/admin"`
@@ -294,7 +280,7 @@ Also tell them: for TikTok product research without accounts or paid tools, they
     let iterations = 0
     let finalResponse: string | null = null
 
-    // ─── REACT LOOP ─────────────────────────────────────────
+    // â”€â”€â”€ REACT LOOP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     while (iterations < MAX_ITERATIONS) {
       iterations++
 

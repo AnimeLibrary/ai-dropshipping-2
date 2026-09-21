@@ -4,7 +4,8 @@ import Link from 'next/link'
  * SURGICAL SUCCESS PAGE
  * Professional, AI-driven order confirmation and next steps.
  */
-export default function SuccessPage({ searchParams }: { searchParams: { session_id: string } }) {
+export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
+  const params = await searchParams
   return (
     <div className="min-h-screen bg-[#0c0c0f] text-white flex flex-col items-center justify-center p-6 text-center">
       
@@ -45,7 +46,7 @@ export default function SuccessPage({ searchParams }: { searchParams: { session_
                 Back to Discovery
             </Link>
             <p className="text-xs text-slate-500">
-                Order ID: {searchParams.session_id?.substring(0, 16)}...
+                Order ID: {params.session_id ? `${params.session_id.substring(0, 16)}...` : 'Confirmed'}
             </p>
         </div>
       </div>

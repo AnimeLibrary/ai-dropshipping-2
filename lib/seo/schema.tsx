@@ -1,6 +1,7 @@
 import React from 'react'
+import { absoluteUrl } from '@/lib/config/site'
 
-export function SchemaMarkup({ schema }: { schema: Record<string, any> }) {
+export function SchemaMarkup({ schema }: { schema: Record<string, any> | null | undefined }) {
   if (!schema) return null
   return (
     <script
@@ -24,7 +25,7 @@ export function productSchema(product: any) {
       priceCurrency: 'USD',
       price: product.price,
       availability: 'https://schema.org/InStock',
-      url: `${process.env.NEXT_PUBLIC_SITE_URL}/products/${product.slug}`,
+      url: absoluteUrl(`/products/${product.slug}`),
     },
     brand: {
       '@type': 'Brand',
@@ -42,8 +43,29 @@ export function breadcrumbSchema(breadcrumbs: { name: string; href: string }[]) 
       '@type': 'ListItem',
       position: index + 1,
       name: crumb.name,
-      item: `${process.env.NEXT_PUBLIC_SITE_URL}${crumb.href}`,
+      item: absoluteUrl(crumb.href),
     })),
+  }
+}
+
+export function articleSchema(article: { title: string; description: string; slug: string; section?: string }) {
+  if (!article) return null
+  const section = article.section || 'guides'
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.description,
+    mainEntityOfPage: absoluteUrl(`/${section}/${article.slug}`),
+    author: {
+      '@type': 'Organization',
+      name: 'Vexsen',
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: 'Vexsen',
+    },
   }
 }
 

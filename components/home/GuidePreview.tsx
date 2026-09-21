@@ -5,12 +5,17 @@ interface Props {
   clusters: KeywordCluster[]
 }
 
-// Converts raw keyword into a clean question.
 function toEmotionalQuestion(cluster: KeywordCluster): string {
   if (!cluster.keyword) return 'How can we help?'
-  let kw = cluster.keyword.charAt(0).toUpperCase() + cluster.keyword.slice(1)
-  if (!kw.endsWith('?')) kw += '?'
-  return kw
+  let keyword = cluster.keyword.charAt(0).toUpperCase() + cluster.keyword.slice(1)
+  if (!keyword.endsWith('?')) keyword += '?'
+  return keyword
+}
+
+function demandLabel(cluster: KeywordCluster): string {
+  if (cluster.searchVolume > 5000) return 'High demand'
+  if (cluster.trend === 'rising') return 'Growing fast'
+  return 'In-depth guide'
 }
 
 export default function GuidePreview({ clusters }: Props) {
@@ -19,14 +24,14 @@ export default function GuidePreview({ clusters }: Props) {
       <div className="flex-between" style={{ marginBottom: 'var(--space-8)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
         <div>
           <span className="badge badge-accent" style={{ marginBottom: 'var(--space-3)' }}>
-            🚀 Rising Fast
+            Search demand guides
           </span>
           <h2 className="heading-xl">
             Questions People Are <span className="gradient-text">Finally Getting Answered</span>
           </h2>
         </div>
         <Link href="/guides" className="btn btn-secondary hide-mobile" id="guides-view-all">
-          All Guides →
+          All Guides &rarr;
         </Link>
       </div>
 
@@ -46,11 +51,10 @@ export default function GuidePreview({ clusters }: Props) {
                   {cluster.niche.replace(/-/g, ' ')}
                 </span>
                 {cluster.trend === 'rising' && (
-                  <span className="badge badge-accent">📈 Rising</span>
+                  <span className="badge badge-accent">Rising</span>
                 )}
               </div>
 
-              {/* Emotional question title — not raw keyword string */}
               <h3
                 style={{
                   fontFamily: 'var(--font-heading)',
@@ -72,17 +76,15 @@ export default function GuidePreview({ clusters }: Props) {
                   marginBottom: 'var(--space-5)',
                 }}
               >
-                {cluster.painPoint || `A deep-dive into the data behind "${cluster.keyword}" — with product recommendations that actually fix it.`}
+                {cluster.painPoint || `A deep dive into the data behind "${cluster.keyword}" with product recommendations that actually fix it.`}
               </p>
 
               <div className="flex-between">
-                <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                    {cluster.searchVolume > 5000 ? '🔥 High demand' : cluster.trend === 'rising' ? '📈 Growing fast' : '📖 In-depth guide'}
-                  </span>
-                </div>
+                <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                  {demandLabel(cluster)}
+                </span>
                 <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 'var(--text-sm)' }}>
-                  Read →
+                  Read &rarr;
                 </span>
               </div>
             </div>
@@ -90,10 +92,9 @@ export default function GuidePreview({ clusters }: Props) {
         ))}
       </div>
 
-      {/* Mobile view all */}
       <div style={{ textAlign: 'center', marginTop: 'var(--space-6)' }} className="hide-desktop">
         <Link href="/guides" className="btn btn-secondary" id="guides-view-all-mobile">
-          All Guides →
+          All Guides &rarr;
         </Link>
       </div>
     </div>

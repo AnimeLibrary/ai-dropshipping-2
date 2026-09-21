@@ -1,19 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import Stripe from 'stripe'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // POST /api/admin/products/[id]/stripe-sync
 // Manual fallback: push an approved product to Stripe and write back the IDs
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   if (!process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: 'STRIPE_SECRET_KEY not set' }, { status: 500 })
   }
 
+  const { id } = await params
   const product = await prisma.product.findUnique({ 
-    where: { id: params.id },
+    where: { id },
     include: { variants: true }
   })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
@@ -26,7 +31,7 @@ export async function POST(
     })
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' })
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' as any })
 
   // Parse gallery images for Stripe (max 8)
   let imageUrls: string[] = []
@@ -107,14 +112,14 @@ export async function POST(
       level: 'info',
       source: 'admin:stripe-sync',
       message: `Manually synced "${product.title}" to Stripe`,
-      meta: JSON.stringify({ productId: product.id, stripeProductId: stripeProd.id, stripePriceId: stripePrice.id }),
+      meta: JSON.stringify({ productId: product.id, stripeProductId: stripeProd.id, stripePriceId: defaultStripePriceId }),
     },
   })
 
   return NextResponse.json({
     success: true,
     stripeProductId: stripeProd.id,
-    stripePriceId: stripePrice.id,
+    stripePriceId: defaultStripePriceId,
     dashboardUrl: `https://dashboard.stripe.com/products/${stripeProd.id}`,
   })
 }

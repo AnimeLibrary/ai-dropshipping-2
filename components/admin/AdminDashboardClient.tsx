@@ -24,10 +24,20 @@ interface FullProduct extends Product {
   reviews: { rating: number }[]
   _count?: { orderItems: number }
 }
+interface OrderItemInfo {
+  productId: string
+  supplierUrl: string | null
+  cjVariantId: string | null
+  quantity: number
+  priceAtSale: number
+  productTitle?: string
+  supplierPrice?: number
+}
 interface Order {
   id: string; customerName: string; customerEmail: string
   status: string; totalAmount: number; trackingNumber?: string
   createdAt: string
+  items?: OrderItemInfo[]
 }
 interface LogEntry {
   id: string; level: string; source: string; message: string
@@ -61,7 +71,7 @@ interface Props {
   seoClusters: SeoCluster[]
 }
 
-type Panel = 'products' | 'orders' | 'safety' | 'health' | 'logs' | 'flow' | 'referrals' | 'reviews' | 'seo'
+type Panel = 'sourcing' | 'products' | 'orders' | 'safety' | 'health' | 'logs' | 'flow' | 'referrals' | 'reviews' | 'seo'
 type ProductsSubTab = 'pipeline' | 'database'
 
 // ── Sub-components ───────────────────────────────────────────
@@ -78,7 +88,7 @@ function Tag({ children, color }: { children: React.ReactNode; color: string }) 
 }
 
 const PANEL_COLOR: Record<string, string> = {
-  products:'#7c3aed', orders:'#22c55e', safety:'#f59e0b', health:'#60a5fa', logs:'#f472b6', flow:'#34d399', referrals:'#e8823a', reviews:'#ec4899', seo:'#14b8a6'
+  sourcing:'#3b82f6', products:'#7c3aed', orders:'#22c55e', safety:'#f59e0b', health:'#60a5fa', logs:'#f472b6', flow:'#34d399', referrals:'#e8823a', reviews:'#ec4899', seo:'#14b8a6'
 }
 
 // ── Main Dashboard ───────────────────────────────────────────
@@ -86,14 +96,14 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
-  const [panel, setPanel] = useState<Panel>('products')
+  const [panel, setPanel] = useState<Panel>('sourcing')
   const [productsTab, setProductsTab] = useState<ProductsSubTab>('pipeline')
   const [pending, setPending]   = useState(pendingProducts)
   const [approved, setApproved] = useState(approvedProducts)
   const [orders]                = useState(liveOrders)
   const [archived]              = useState(archivedProducts)
   const [reviews, setReviews]   = useState(pendingReviews)
-  const [isChatOpen, setChat]   = useState(true)
+  const [isChatOpen, setChat]   = useState(false)
   const [toast, setToast]       = useState<{ msg: string; type: 'ok'|'err' } | null>(null)
   const [status, setStatus]     = useState<SystemStatus | null>(null)
   const [logs, setLogs]         = useState<LogEntry[]>([])
@@ -106,6 +116,91 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   const [dbFilter, setDbFilter] = useState('all')
   const [dbSearch, setDbSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+
+  // CJ Sourcing state (Direct Control)
+  const [cjKeyword, setCjKeyword] = useState('posture')
+  const [cjMarkup, setCjMarkup] = useState(2.5)
+  const [cjSearching, setCjSearching] = useState(false)
+  const [cjResults, setCjResults] = useState<any[]>([])
+  const [importingPid, setImportingPid] = useState<string | null>(null)
+
+  // Auto Margin Calculator Widget State
+  const [calcCost, setCalcCost] = useState<number>(8.50)
+  const [calcRetail, setCalcRetail] = useState<number>(29.99)
+
+  // Custom Media Manager (Add Pictures / AI Videos directly)
+  const [newMediaUrl, setNewMediaUrl] = useState<Record<string, string>>({})
+
+  const handleAddMedia = async (productId: string, currentHero: string | null) => {
+    const url = (newMediaUrl[productId] || '').trim()
+    if (!url) return
+
+    setLoadingId(`media-${productId}`)
+    try {
+      let images: string[] = []
+      try {
+        if (currentHero?.startsWith('[')) {
+          images = JSON.parse(currentHero)
+        } else if (currentHero) {
+          images = [currentHero]
+        }
+      } catch {}
+
+      if (!images.includes(url)) {
+        images.push(url)
+      }
+
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroImage: JSON.stringify(images) })
+      })
+
+      if (!res.ok) throw new Error('Failed to update product media')
+
+      // Update local state
+      setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, heroImage: JSON.stringify(images) } : p))
+      setApproved(prev => prev.map(p => p.id === productId ? { ...p, heroImage: JSON.stringify(images) } : p))
+      setPending(prev => prev.map(p => p.id === productId ? { ...p, heroImage: JSON.stringify(images) } : p))
+      setNewMediaUrl(prev => ({ ...prev, [productId]: '' }))
+      showToast('🎬 Media added successfully!')
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleRemoveMedia = async (productId: string, currentHero: string | null, targetUrl: string) => {
+    setLoadingId(`media-del-${productId}`)
+    try {
+      let images: string[] = []
+      try {
+        if (currentHero?.startsWith('[')) {
+          images = JSON.parse(currentHero)
+        } else if (currentHero) {
+          images = [currentHero]
+        }
+      } catch {}
+
+      const updated = images.filter(img => img !== targetUrl)
+      const res = await fetch(`/api/admin/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heroImage: updated.length > 0 ? JSON.stringify(updated) : null })
+      })
+
+      if (!res.ok) throw new Error('Failed to remove media')
+
+      setAllProducts(prev => prev.map(p => p.id === productId ? { ...p, heroImage: updated.length > 0 ? JSON.stringify(updated) : null } : p))
+      setApproved(prev => prev.map(p => p.id === productId ? { ...p, heroImage: updated.length > 0 ? JSON.stringify(updated) : null } : p))
+      showToast('Media removed')
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
 
   const showToast = (msg: string, type: 'ok'|'err' = 'ok') => {
     setToast({ msg, type })
@@ -268,16 +363,72 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
     }
   }
 
+  // ── Direct CJ Sourcing Actions ──────────────────────────────
+  const handleCjSearch = async (kw?: string) => {
+    const searchTarget = kw || cjKeyword
+    if (!searchTarget.trim()) return
+    setCjSearching(true)
+    try {
+      const res = await fetch(`/api/admin/cj/search?keyword=${encodeURIComponent(searchTarget)}&pageSize=16`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Search failed')
+      setCjResults(data.products || [])
+      if ((data.products || []).length === 0) {
+        showToast('No products found on CJ for this keyword', 'err')
+      }
+    } catch (e: any) {
+      showToast(e.message, 'err')
+    } finally {
+      setCjSearching(false)
+    }
+  }
+
+  const handleCjImport = async (pid: string, niche = 'general') => {
+    setImportingPid(pid)
+    try {
+      const res = await fetch('/api/admin/cj/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pid, niche, markupFactor: cjMarkup })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Import failed')
+      showToast(`⚡ Imported "${data.product.title.slice(0, 28)}..." to Pipeline!`)
+      setPending(prev => [data.product, ...prev])
+    } catch (e: any) {
+      showToast(e.message, 'err')
+    } finally {
+      setImportingPid(null)
+    }
+  }
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this product?')) return
+    setLoadingId(productId)
+    try {
+      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Delete failed')
+      setPending(prev => prev.filter(p => p.id !== productId))
+      setApproved(prev => prev.filter(p => p.id !== productId))
+      showToast('🗑️ Product deleted')
+    } catch (e: any) {
+      showToast(e.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   // ── Sidebar ─────────────────────────────────────────────────
   const navItems: { id: Panel; label: string; badge?: number }[] = [
+    { id: 'sourcing', label: '⚡ CJ Sourcing' },
     { id: 'products', label: '📦 Products',    badge: pending.length },
     { id: 'orders',   label: '🛒 Orders',      badge: orders.filter(o=>o.status==='processing').length },
     { id: 'safety',   label: '🛡️ Safety Valve', badge: archived.length },
-    { id: 'referrals', label: '🎁 Referrals',   badge: referrals.filter(r=>r.uses.some(u=>u.status==='pending')).length || undefined },
-    { id: 'reviews',  label: '💬 UGC Reviews',  badge: reviews.length || undefined },
-    { id: 'seo',      label: '📈 SEO Fleet',    badge: seoClusters.filter(c => !c.hasContent).length || undefined },
     { id: 'health',   label: '💚 System Health' },
     { id: 'logs',     label: '📋 Logs',         badge: logs.filter(l=>l.level==='error').length || undefined },
+    { id: 'reviews',  label: '💬 UGC Reviews',  badge: reviews.length || undefined },
+    { id: 'referrals', label: '🎁 Referrals',   badge: referrals.filter(r=>r.uses.some(u=>u.status==='pending')).length || undefined },
+    { id: 'seo',      label: '📈 SEO Fleet',    badge: seoClusters.filter(c => !c.hasContent).length || undefined },
     { id: 'flow',     label: '🔀 Data Flow' },
   ]
 
@@ -328,6 +479,276 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
       {/* ── Main Panel ── */}
       <div style={{ flex:1, overflow:'auto', padding:28, marginRight: isChatOpen ? 480 : 0, transition:'margin-right 0.3s ease' }}>
 
+        {/* ── CJ SOURCING PANEL (DIRECT CONTROL) ── */}
+        {panel === 'sourcing' && (
+          <div>
+            <div style={{ marginBottom:20 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:12 }}>
+                <div>
+                  <h1 style={{ fontSize:22, fontWeight:900, margin:0, color:'#60a5fa', display:'flex', alignItems:'center', gap:8 }}>
+                    ⚡ CJ Dropshipping Hunter
+                  </h1>
+                  <p style={{ color:'#94a3b8', fontSize:13, margin:'6px 0 0' }}>
+                    Full manual control. Search CJ's verified supplier catalog, preview profit margins, and import in 1 click.
+                  </p>
+                </div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, background:'#111118', padding:'6px 12px', borderRadius:8, border:'1px solid #1e1e2e' }}>
+                  <span style={{ fontSize:11, color:'#6b7280', fontWeight:700 }}>MARKUP:</span>
+                  {[2.0, 2.5, 3.0].map(m => (
+                    <button key={m} onClick={() => setCjMarkup(m)} style={{
+                      background: cjMarkup === m ? '#3b82f633' : '#1e1e2e',
+                      border: `1px solid ${cjMarkup === m ? '#3b82f6' : '#2e2e4e'}`,
+                      color: cjMarkup === m ? '#60a5fa' : '#9ca3af',
+                      borderRadius:6, padding:'3px 9px', fontSize:11, fontWeight:700, cursor:'pointer'
+                    }}>
+                      {m}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Search Bar & Preset Pills */}
+            <div style={{ ...card, padding:16, marginBottom:20 }}>
+              <div style={{ display:'flex', gap:10, marginBottom:12 }}>
+                <input
+                  value={cjKeyword}
+                  onChange={e => setCjKeyword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleCjSearch()}
+                  placeholder="Search products e.g. 'posture corrector', 'dog harness', 'lumbar support'..."
+                  style={{
+                    flex:1, background:'#09090e', border:'1px solid #2e2e4e', color:'#fff',
+                    borderRadius:8, padding:'10px 14px', fontSize:13, outline:'none'
+                  }}
+                />
+                <button
+                  onClick={() => handleCjSearch()}
+                  disabled={cjSearching}
+                  style={{
+                    background:'linear-gradient(135deg, #2563eb, #3b82f6)', border:'none',
+                    color:'#fff', borderRadius:8, padding:'0 24px', fontWeight:700,
+                    fontSize:13, cursor: cjSearching ? 'not-allowed' : 'pointer',
+                    opacity: cjSearching ? 0.7 : 1, display:'flex', alignItems:'center', gap:8
+                  }}
+                >
+                  {cjSearching ? 'Searching…' : '🔍 Search CJ'}
+                </button>
+              </div>
+
+              {/* Niche quick buttons */}
+              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                <span style={{ fontSize:11, color:'#6b7280', fontWeight:700, marginRight:4 }}>WINNING NICHES:</span>
+                {[
+                  { label: 'Posture Corrector', kw: 'posture corrector' },
+                  { label: 'Back Pain Relief', kw: 'back pain relief' },
+                  { label: 'Lumbar Support', kw: 'lumbar support' },
+                  { label: 'Pet Accessories', kw: 'dog accessories' },
+                  { label: 'Ergonomic Support', kw: 'ergonomic cushion' },
+                  { label: 'Knee Pain Relief', kw: 'knee brace' },
+                ].map(item => (
+                  <button
+                    key={item.label}
+                    onClick={() => { setCjKeyword(item.kw); handleCjSearch(item.kw) }}
+                    style={{
+                      background:'#161622', border:'1px solid #262638', color:'#cbd5e1',
+                      borderRadius:6, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:600
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Auto Margin & Profit Calculator Widget ── */}
+            {(() => {
+              const stripeFee = Math.round((calcRetail * 0.029 + 0.30) * 100) / 100
+              const netProfit = Math.round((calcRetail - calcCost - stripeFee) * 100) / 100
+              const netMarginPct = calcRetail > 0 ? Math.round((netProfit / calcRetail) * 100) : 0
+              const isHealthy = netMarginPct >= 40 && netProfit >= 12
+
+              return (
+                <div style={{ ...card, padding: 18, marginBottom: 20, background: 'linear-gradient(180deg, #11111a 0%, #0d0d14 100%)', border: '1px solid #27273a' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 16 }}>📊</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc', letterSpacing: '0.02em' }}>
+                        LIVE DROPSHIPPING MARGIN CALCULATOR
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4,
+                      background: isHealthy ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                      color: isHealthy ? '#4ade80' : '#f87171',
+                      border: `1px solid ${isHealthy ? '#22c55e44' : '#ef444444'}`
+                    }}>
+                      {isHealthy ? '✓ STRONG PROFIT MARGIN' : '⚠️ THIN MARGIN (CHECK COSTS)'}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, alignItems: 'center' }}>
+                    {/* Cost Input */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 4 }}>
+                        Supplier Cost (CJ Dropshipping):
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 10, top: 8, color: '#64748b', fontSize: 13, fontWeight: 700 }}>$</span>
+                        <input
+                          type="number"
+                          step="0.10"
+                          min="0"
+                          value={calcCost}
+                          onChange={e => setCalcCost(Math.max(0, parseFloat(e.target.value) || 0))}
+                          style={{
+                            width: '100%', background: '#07070b', border: '1px solid #232336', color: '#fff',
+                            borderRadius: 6, padding: '8px 10px 8px 24px', fontSize: 13, fontWeight: 700, outline: 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Retail Price Input */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 4 }}>
+                        Customer Selling Price (Retail):
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 10, top: 8, color: '#64748b', fontSize: 13, fontWeight: 700 }}>$</span>
+                        <input
+                          type="number"
+                          step="0.50"
+                          min="0"
+                          value={calcRetail}
+                          onChange={e => setCalcRetail(Math.max(0, parseFloat(e.target.value) || 0))}
+                          style={{
+                            width: '100%', background: '#07070b', border: '1px solid #232336', color: '#38bdf8',
+                            borderRadius: 6, padding: '8px 10px 8px 24px', fontSize: 13, fontWeight: 800, outline: 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stripe Fee Breakdown */}
+                    <div style={{ background: '#08080d', borderRadius: 6, padding: '8px 12px', border: '1px solid #1e1e2d' }}>
+                      <div style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                        Stripe Fee (2.9% + 30¢)
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: '#e2e8f0', marginTop: 4 }}>
+                        -${stripeFee.toFixed(2)}
+                      </div>
+                    </div>
+
+                    {/* Net Profit Output */}
+                    <div style={{ background: isHealthy ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)', borderRadius: 6, padding: '8px 12px', border: `1px solid ${isHealthy ? '#22c55e33' : '#ef444433'}` }}>
+                      <div style={{ fontSize: 10, color: isHealthy ? '#4ade80' : '#f87171', fontWeight: 800, textTransform: 'uppercase' }}>
+                        Net Take-Home Profit
+                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: isHealthy ? '#4ade80' : '#f87171', marginTop: 3 }}>
+                        +${netProfit.toFixed(2)} <span style={{ fontSize: 12, fontWeight: 700 }}>({netMarginPct}%)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Results Grid */}
+            {cjResults.length === 0 && !cjSearching && (
+              <div style={{ ...card, textAlign:'center', padding:48, color:'#64748b' }}>
+                <div style={{ fontSize:32, marginBottom:12 }}>📦</div>
+                <div style={{ fontSize:15, fontWeight:700, color:'#cbd5e1' }}>Ready to Hunt Winning Products</div>
+                <p style={{ maxWidth:440, margin:'8px auto 16px', fontSize:12, lineHeight:1.6 }}>
+                  Click any winning niche button above or enter a keyword to pull real supplier prices, sales volume, and variant options directly from CJ Dropshipping.
+                </p>
+                <button onClick={() => handleCjSearch('posture corrector')} style={{ background:'#3b82f622', border:'1px solid #3b82f666', color:'#60a5fa', borderRadius:8, padding:'8px 18px', fontWeight:700, fontSize:12, cursor:'pointer' }}>
+                  Search Posture Correctors
+                </button>
+              </div>
+            )}
+
+            {cjSearching && (
+              <div style={{ ...card, textAlign:'center', padding:48, color:'#94a3b8' }}>
+                <div style={{ fontSize:28, marginBottom:12 }}>⚡</div>
+                <div style={{ fontWeight:700 }}>Querying CJ Dropshipping API...</div>
+              </div>
+            )}
+
+            {cjResults.length > 0 && !cjSearching && (
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:16 }}>
+                {cjResults.map(prod => {
+                  const cost = Number(prod.supplierPrice || 0)
+                  const retail = Math.round(cost * cjMarkup * 100) / 100
+                  const marginDollars = Math.round((retail - cost) * 100) / 100
+                  const marginPct = retail > 0 ? Math.round(((retail - cost) / retail) * 100) : 0
+                  const isImporting = importingPid === prod.pid
+
+                  return (
+                    <div key={prod.pid} style={{
+                      ...card, padding:12, display:'flex', flexDirection:'column',
+                      justifyContent:'space-between', marginBottom:0, border:'1px solid #222233',
+                      position:'relative'
+                    }}>
+                      <div>
+                        {/* Thumbnail */}
+                        <div style={{ width:'100%', height:160, borderRadius:8, overflow:'hidden', background:'#07070a', marginBottom:10, position:'relative' }}>
+                          <img
+                            src={prod.image || '/placeholder.png'}
+                            alt={prod.title}
+                            style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png' }}
+                          />
+                          {prod.salesVolume > 0 && (
+                            <div style={{ position:'absolute', top:6, left:6, background:'rgba(0,0,0,0.75)', backdropFilter:'blur(4px)', borderRadius:4, padding:'2px 6px', fontSize:10, fontWeight:800, color:'#4ade80' }}>
+                              🔥 {prod.salesVolume.toLocaleString()} SOLD
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Title */}
+                        <div style={{ fontWeight:700, fontSize:12, color:'#f1f5f9', lineHeight:1.4, height:34, overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', marginBottom:8 }}>
+                          {prod.title}
+                        </div>
+
+                        {/* Financials */}
+                        <div style={{ background:'#09090f', borderRadius:6, padding:8, border:'1px solid #1a1a28', marginBottom:10 }}>
+                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
+                            <span style={{ color:'#64748b' }}>Cost:</span>
+                            <span style={{ color:'#94a3b8', fontWeight:700 }}>${cost.toFixed(2)}</span>
+                          </div>
+                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
+                            <span style={{ color:'#64748b' }}>Retail ({cjMarkup}x):</span>
+                            <span style={{ color:'#38bdf8', fontWeight:800 }}>${retail.toFixed(2)}</span>
+                          </div>
+                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, borderTop:'1px solid #1a1a28', paddingTop:4 }}>
+                            <span style={{ color:'#64748b' }}>Profit:</span>
+                            <span style={{ color:'#4ade80', fontWeight:800 }}>+${marginDollars.toFixed(2)} ({marginPct}%)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Import Action */}
+                      <button
+                        onClick={() => handleCjImport(prod.pid, cjKeyword)}
+                        disabled={isImporting}
+                        style={{
+                          width:'100%', background: isImporting ? '#1e293b' : 'linear-gradient(135deg, #16a34a, #22c55e)',
+                          border:'none', borderRadius:6, color:'#fff', padding:'8px 0',
+                          fontWeight:800, fontSize:12, cursor: isImporting ? 'not-allowed' : 'pointer',
+                          display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+                          boxShadow: '0 2px 10px rgba(34,197,94,0.2)'
+                        }}
+                      >
+                        {isImporting ? 'Importing…' : '⚡ Import to Store'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── PRODUCTS PANEL ── */}
         {panel === 'products' && (
           <div>
@@ -347,7 +768,16 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
               <div>
                 <div style={{ marginBottom:28 }}>
                   <p style={label}>⏳ Pending Review ({pending.length})</p>
-                {pending.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>Queue is empty. Paste Kalodata/Minea CSV into the AI Agent or type "scout products" to auto-find best sellers.</div>}
+                {pending.length === 0 && (
+                  <div style={{ ...card, color:'#94a3b8', textAlign:'center', padding:40 }}>
+                    <div style={{ fontSize:28, marginBottom:8 }}>⚡</div>
+                    <div style={{ fontSize:15, fontWeight:700, color:'#f1f5f9', marginBottom:6 }}>Pipeline is empty</div>
+                    <p style={{ margin:'0 0 16px', fontSize:12, color:'#64748b' }}>Search and import products directly with the CJ Sourcing Hunter.</p>
+                    <button onClick={()=>setPanel('sourcing')} style={{ background:'#3b82f6', border:'none', color:'#fff', padding:'8px 18px', borderRadius:6, fontWeight:700, fontSize:12, cursor:'pointer' }}>
+                      ⚡ Open CJ Sourcing Hunter
+                    </button>
+                  </div>
+                )}
                   {pending.map(p => {
                     const profit = p.price - p.supplierPrice
                     const margin = ((profit / p.price) * 100).toFixed(1)
@@ -362,8 +792,8 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
 
                     // Variants
                     const variants = p.variants || []
-                    const colors = [...new Set(variants.map(v => v.color).filter(Boolean))] as string[]
-                    const sizes  = [...new Set(variants.map(v => v.size).filter(Boolean))]  as string[]
+                    const colors = variants.map(v => v.color).filter((c, i, a): c is string => Boolean(c) && a.indexOf(c) === i)
+                    const sizes  = variants.map(v => v.size).filter((s, i, a): s is string => Boolean(s) && a.indexOf(s) === i)
                     const hasVariants = variants.length > 1
                     const totalStock = variants.reduce((s, v) => s + v.cjStock, 0)
 
@@ -386,13 +816,23 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                               {hasCJ && <Tag color='#60a5fa'>CJ ✓</Tag>}
                             </div>
                           </div>
-                          {/* Approve / Reject */}
-                          <div style={{ display:'flex', gap:8, flexShrink:0 }}>
+                          {/* Actions: Stripe Sync, Approve, Reject, Delete */}
+                          <div style={{ display:'flex', gap:8, flexShrink:0, alignItems:'center' }}>
+                            {!p.stripePriceId && (
+                              <button onClick={()=>handleStripeSync(p.id, p.title)} disabled={loadingId===`stripe-${p.id}`} style={{ background:'#f59e0b22', border:'1px solid #f59e0b44', color:'#fbbf24', borderRadius:6, padding:'6px 12px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
+                                {loadingId===`stripe-${p.id}` ? '⏳…' : '💳 Push Stripe'}
+                              </button>
+                            )}
+                            {p.stripePriceId && (
+                              <span style={{ fontSize:11, color:'#22c55e', fontWeight:700, background:'#22c55e15', padding:'4px 8px', borderRadius:4 }}>
+                                💳 Synced
+                              </span>
+                            )}
                             <button onClick={()=>handleProductAction(p.id,'approve')} disabled={loadingId===p.id} style={{ background:'#22c55e22', border:'1px solid #22c55e44', color:'#4ade80', borderRadius:6, padding:'6px 16px', cursor:'pointer', fontWeight:700, fontSize:12, opacity:loadingId===p.id?0.5:1 }}>
                               {loadingId===p.id?'…':'✅ Approve'}
                             </button>
-                            <button onClick={()=>handleProductAction(p.id,'reject')} disabled={loadingId===p.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'6px 14px', cursor:'pointer', fontWeight:700, fontSize:12 }}>
-                              ✕ Reject
+                            <button onClick={()=>handleDeleteProduct(p.id)} disabled={loadingId===p.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'6px 10px', cursor:'pointer', fontWeight:700, fontSize:12 }} title="Permanently delete">
+                              🗑️
                             </button>
                           </div>
                         </div>
@@ -608,19 +1048,75 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                             </div>
                           </div>
 
-                          {/* Gallery images */}
-                          {galleryImages.length > 0 && (
-                            <div style={{ marginBottom:12 }}>
-                              <div style={{ fontSize:10, color:'#4a4a6a', fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Images ({galleryImages.length})</div>
-                              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                                {galleryImages.map((img, i) => (
-                                  <a key={i} href={img} target="_blank">
-                                    <img src={img} alt={`img-${i}`} style={{ width:64, height:64, objectFit:'cover', borderRadius:6, border:'1px solid #1e1e2e' }} />
-                                  </a>
-                                ))}
+                          {/* 🎬 Media & Video Showcase Manager */}
+                          <div style={{ marginBottom: 16, background: '#0a0a10', border: '1px solid #1f1f2e', borderRadius: 8, padding: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                              <div style={{ fontSize: 11, color: '#e2e8f0', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span>🎬 Landing Page Media & AI Video Ads ({galleryImages.length})</span>
                               </div>
                             </div>
-                          )}
+
+                            {/* Add New Media Input */}
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                              <input
+                                placeholder="Paste image URL (.png, .jpg) or AI Video (.mp4, YouTube, TikTok embed)..."
+                                value={newMediaUrl[p.id] || ''}
+                                onChange={e => setNewMediaUrl({ ...newMediaUrl, [p.id]: e.target.value })}
+                                onKeyDown={e => e.key === 'Enter' && handleAddMedia(p.id, p.heroImage || null)}
+                                style={{ flex: 1, background: '#07070b', border: '1px solid #28283c', color: '#fff', borderRadius: 6, padding: '7px 12px', fontSize: 11, outline: 'none' }}
+                              />
+                              <button
+                                onClick={() => handleAddMedia(p.id, p.heroImage || null)}
+                                disabled={loadingId === `media-${p.id}` || !newMediaUrl[p.id]?.trim()}
+                                style={{
+                                  background: 'linear-gradient(135deg, #7c3aed, #a855f7)', border: 'none', color: '#fff',
+                                  borderRadius: 6, padding: '0 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                  opacity: !newMediaUrl[p.id]?.trim() ? 0.5 : 1
+                                }}
+                              >
+                                {loadingId === `media-${p.id}` ? 'Adding…' : '+ Add Media'}
+                              </button>
+                            </div>
+
+                            {/* Gallery / Video Previews */}
+                            {galleryImages.length > 0 ? (
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                {galleryImages.map((mediaUrl, i) => {
+                                  const isVid = mediaUrl.toLowerCase().endsWith('.mp4') || mediaUrl.includes('youtube') || mediaUrl.includes('vimeo')
+                                  return (
+                                    <div key={i} style={{ position: 'relative', width: 72, height: 72, borderRadius: 6, overflow: 'hidden', border: '1px solid #232338', background: '#000' }}>
+                                      {isVid ? (
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e', fontSize: 18, background: '#181824' }}>
+                                          ▶
+                                        </div>
+                                      ) : (
+                                        <img src={mediaUrl} alt={`media-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                      )}
+                                      <button
+                                        onClick={() => handleRemoveMedia(p.id, p.heroImage || null, mediaUrl)}
+                                        title="Delete media"
+                                        style={{
+                                          position: 'absolute', top: 2, right: 2, width: 18, height: 18,
+                                          background: 'rgba(239,68,68,0.9)', color: '#fff', borderRadius: '50%',
+                                          fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                          cursor: 'pointer', border: 'none', fontWeight: 900
+                                        }}
+                                      >
+                                        ✕
+                                      </button>
+                                      {isVid && (
+                                        <span style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.8)', color: '#f43f5e', fontSize: 7, fontWeight: 800, padding: '1px 3px', borderRadius: 2 }}>
+                                          VIDEO
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>No media yet. Paste image or AI video URLs above.</p>
+                            )}
+                          </div>
 
                           {/* Short description */}
                           {p.shortDescription && (
@@ -663,18 +1159,35 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
               ℹ️ Orders are written to DB when Stripe webhook fires. AutoDS push is queued on creation — activate with <code>AUTODS_API_KEY</code>.
             </div>
             {orders.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>No orders yet. Orders appear here when Stripe checkout completes.</div>}
-            {orders.map(o => (
-              <div key={o.id} style={card}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ fontWeight:700, marginBottom:4 }}>{o.customerName} <span style={{ color:'#6b7280', fontWeight:400, fontSize:12 }}>&lt;{o.customerEmail}&gt;</span></div>
-                    <div style={{ fontSize:12, color:'#6b7280' }}>{new Date(o.createdAt).toLocaleString()}</div>
+            {orders.map(o => {
+              const supplierCost = (o.items || []).reduce((acc, it) => acc + (it.supplierPrice || 0) * (it.quantity || 1), 0)
+              const stripeFee = Math.round((o.totalAmount * 0.029 + 0.30) * 100) / 100
+              const realizedProfit = Math.round((o.totalAmount - supplierCost - stripeFee) * 100) / 100
+
+              return (
+                <div key={o.id} style={card}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div>
+                      <div style={{ fontWeight:700, marginBottom:4 }}>{o.customerName} <span style={{ color:'#6b7280', fontWeight:400, fontSize:12 }}>&lt;{o.customerEmail}&gt;</span></div>
+                      <div style={{ fontSize:12, color:'#6b7280' }}>
+                        {new Date(o.createdAt).toLocaleString()}
+                        {o.items && o.items.length > 0 && (
+                          <span style={{ color: '#94a3b8', marginLeft: 8 }}>
+                            ({o.items.map(i => `${i.quantity}x ${i.productTitle || 'Item'}`).join(', ')})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ textAlign:'right', display:'flex', alignItems:'center', gap:12 }}>
+                      <div>
+                        <div style={{ fontWeight:800, color:'#4ade80', fontSize:15 }}>${o.totalAmount.toFixed(2)}</div>
+                        <div style={{ fontSize:10, color: realizedProfit >= 0 ? '#4ade80' : '#f87171', fontWeight: 700 }}>
+                          Net Profit: {realizedProfit >= 0 ? '+' : ''}${realizedProfit.toFixed(2)}
+                        </div>
+                      </div>
+                      <Tag color={ o.status==='shipped'?'#22c55e': o.status==='processing'?'#f59e0b': o.status==='refunded'?'#ef4444':'#60a5fa' }>{o.status.toUpperCase()}</Tag>
+                    </div>
                   </div>
-                  <div style={{ textAlign:'right', display:'flex', alignItems:'center', gap:12 }}>
-                    <span style={{ fontWeight:800, color:'#4ade80', fontSize:15 }}>${o.totalAmount.toFixed(2)}</span>
-                    <Tag color={ o.status==='shipped'?'#22c55e': o.status==='processing'?'#f59e0b': o.status==='refunded'?'#ef4444':'#60a5fa' }>{o.status.toUpperCase()}</Tag>
-                  </div>
-                </div>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginTop:8 }}>
                   <div>
                     {o.trackingNumber && <div style={{ fontSize:11, color:'#6b7280' }}>Tracking: {o.trackingNumber}</div>}
@@ -687,7 +1200,8 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                   )}
                 </div>
               </div>
-            ))}
+            )
+          })}
           </div>
         )}
 

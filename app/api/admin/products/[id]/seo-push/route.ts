@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
 // POST /api/admin/products/[id]/seo-push
 // Manually trigger SEO cluster generation for a product
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const product = await prisma.product.findUnique({ where: { id: params.id } })
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
+  const { id } = await params
+  const product = await prisma.product.findUnique({ where: { id } })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
   // Check if cluster already exists for this product
@@ -71,6 +76,6 @@ export async function POST(
     clusterId: cluster.id,
     keyword,
     targetSlug,
-    message: `SEO cluster created: "${keyword}" → /${targetSlug}`,
+    message: `SEO cluster created: "${keyword}" â†’ /${targetSlug}`,
   })
 }

@@ -4,9 +4,10 @@ import { prisma } from '@/lib/db/prisma'
 
 export async function GET(
   _req: Request,
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
-  const code = params.code?.toUpperCase().trim()
+  const { code: rawCode } = await params
+  const code = rawCode?.toUpperCase().trim()
   if (!code) return NextResponse.json({ valid: false, error: 'No code provided' })
 
   const referral = await prisma.referral.findUnique({

@@ -6,6 +6,7 @@ interface CheckoutButtonProps {
   productId: string
   title: string
   price: number
+  quantity?: number
   imageUrl?: string
   bundleItems?: string[]
   variant?: 'primary' | 'outline'
@@ -18,6 +19,7 @@ export default function CheckoutButton({
   productId,
   title,
   price,
+  quantity = 1,
   imageUrl,
   bundleItems,
   variant = 'primary',
@@ -61,11 +63,8 @@ export default function CheckoutButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId,
-          title: resolvedTitle,
-          price,
           priceId,
-          imageUrl,
-          bundleItems,
+          quantity,
           referralCode: promoStatus === 'valid' ? promoCode.trim().toUpperCase() : undefined,
         })
       })

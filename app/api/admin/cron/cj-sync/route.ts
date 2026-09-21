@@ -1,8 +1,8 @@
-/**
+﻿/**
  * CJ DROPSHIPPING PRICE & STOCK SYNC CRON
  * Run hourly via Vercel Cron or manually from admin dashboard.
  * - Polls every approved/pending product that has a cjProductId
- * - Adjusts retail prices if supplier price changed → logs to PriceLog
+ * - Adjusts retail prices if supplier price changed â†’ logs to PriceLog
  * - Auto-archives products where ALL variants hit zero stock
  */
 
@@ -10,10 +10,14 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { cj } from '@/lib/services/cj-service'
 import { calculateTargetPrice } from '@/lib/utils/pricing'
+import { requireAdminOrCron } from '@/lib/auth/admin'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: Request) {
+  const unauthorized = await requireAdminOrCron(req)
+  if (unauthorized) return unauthorized
+
   // Verify cron secret to prevent public abuse
   const authHeader = req.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
@@ -45,13 +49,13 @@ export async function GET(req: Request) {
     try {
       const fresh = await cj.refreshProductPriceAndStock(product.cjProductId)
       if (!fresh) {
-        logs.push(`⚠️ ${product.title}: CJ returned no data`)
+        logs.push(`âš ï¸ ${product.title}: CJ returned no data`)
         continue
       }
 
       const priceChanged = Math.abs(fresh.supplierPrice - product.supplierPrice) > 0.01
 
-      // ── Price Change ──────────────────────────────────────────
+      // â”€â”€ Price Change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       if (priceChanged) {
         const newRetail = calculateTargetPrice(fresh.supplierPrice)
         await prisma.product.update({
@@ -65,15 +69,15 @@ export async function GET(req: Request) {
           data: {
             level: 'info',
             source: 'cron:cj-sync',
-            message: `Price change: "${product.title}" $${product.supplierPrice.toFixed(2)} → $${fresh.supplierPrice.toFixed(2)}`,
+            message: `Price change: "${product.title}" $${product.supplierPrice.toFixed(2)} â†’ $${fresh.supplierPrice.toFixed(2)}`,
             meta: JSON.stringify({ productId: product.id, cjProductId: product.cjProductId })
           }
         })
-        logs.push(`💰 ${product.title}: $${product.supplierPrice.toFixed(2)} → $${fresh.supplierPrice.toFixed(2)} (retail $${newRetail.toFixed(2)})`)
+        logs.push(`ðŸ’° ${product.title}: $${product.supplierPrice.toFixed(2)} â†’ $${fresh.supplierPrice.toFixed(2)} (retail $${newRetail.toFixed(2)})`)
         priceChanges++
       }
 
-      // ── Variant Stock Sync ────────────────────────────────────
+      // â”€â”€ Variant Stock Sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       for (const fv of fresh.variants) {
         if (!fv.vid) continue
         const updated = await prisma.productVariant.updateMany({
@@ -87,13 +91,13 @@ export async function GET(req: Request) {
         if (updated.count > 0) stockUpdates++
       }
 
-      // ── Update sync timestamp ─────────────────────────────────
+      // â”€â”€ Update sync timestamp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
       await prisma.product.update({
         where: { id: product.id },
         data: { cjLastSyncedAt: new Date() }
       })
 
-      // ── Auto-archive if ALL variants are out of stock ─────────
+      // â”€â”€ Auto-archive if ALL variants are out of stock â”€â”€â”€â”€â”€â”€â”€â”€â”€
       if (product.variants.length > 0 && fresh.variants.every(v => v.stock === 0)) {
         await prisma.product.update({
           where: { id: product.id },
@@ -107,13 +111,13 @@ export async function GET(req: Request) {
             meta: JSON.stringify({ productId: product.id })
           }
         })
-        logs.push(`🚫 Auto-archived ${product.title}: zero stock across all variants`)
+        logs.push(`ðŸš« Auto-archived ${product.title}: zero stock across all variants`)
         autoArchived++
       }
 
       synced++
     } catch (err: any) {
-      logs.push(`❌ ${product.title}: ${err.message}`)
+      logs.push(`âŒ ${product.title}: ${err.message}`)
       await prisma.systemLog.create({
         data: {
           level: 'error',

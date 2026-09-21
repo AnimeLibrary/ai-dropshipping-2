@@ -18,6 +18,7 @@ export interface KeywordCluster {
   niche: string                 // e.g. "back-pain", "sleep", "home-office"
   relatedKeywords: string[]     // Secondary/LSI keywords for content
   relatedPages: string[]        // Internal link targets (slugs)
+  relatedSlugs?: string[]       // Database schema alias
   targetPageType: 'guide' | 'problem' | 'solution' | 'product' | 'collection'
   targetSlug: string            // URL slug for the generated page
   painPoint: string             // The core human problem this addresses

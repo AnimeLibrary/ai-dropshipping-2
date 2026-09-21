@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   try {
-    const { id } = params
+    const { id } = await params
     const { action } = await req.json()
 
     if (!id || (action !== 'approve' && action !== 'reject')) {

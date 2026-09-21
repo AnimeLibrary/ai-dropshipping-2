@@ -1,7 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { SEOStrategist } from '@/lib/services/seo-strategist'
+import { requireAdmin } from '@/lib/auth/admin'
 
 export async function POST(req: NextRequest) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   try {
     const { productId, count } = await req.json()
 

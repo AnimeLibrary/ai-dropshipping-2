@@ -8,23 +8,24 @@ import ThemeProvider from '@/components/layout/ThemeProvider'
 import AdsTrackingProvider from '@/components/layout/AdsTrackingProvider'
 import Analytics from '@/components/layout/Analytics'
 import SupportChat from '@/components/layout/SupportChat'
+import { siteConfig } from '@/lib/config/site'
 
 // Notice: Google fonts disabled temporarily to prevent Next.js build crashes on slow hotspot connections.
 // Using system font fallbacks via globals.css for now.
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://vexsen.store'),
+  metadataBase: new URL(siteConfig.url),
   title: {
-    default: 'Vexsen — Curated for Everyday Life',
+    default: 'Vexsen - Curated for Everyday Life',
     template: '%s | Vexsen',
   },
-  description:
-    'Functional design. Uncompromising quality. Vexsen builds and curates solutions designed to elevate your everyday routines.',
+  description: siteConfig.description,
   keywords: ['premium products', 'vexsen', 'lifestyle solutions', 'quality goods'],
   openGraph: {
     type: 'website',
     locale: 'en_US',
     siteName: 'Vexsen',
+    url: siteConfig.url,
   },
   twitter: { card: 'summary_large_image' },
   robots: {

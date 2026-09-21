@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
 import { enrichProductWithAI } from '@/lib/ai/agent-tools'
+import { requireAdmin } from '@/lib/auth/admin'
 
 const INTERNAL_PATTERNS = [
   'guardrail', 'saturation', 'APPROVE', 'REVIEW', 'TikTok UGC',
@@ -20,10 +21,14 @@ function isInternalData(text: string | null): boolean {
  */
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   try {
-    const product = await prisma.product.findUnique({ where: { id: params.id } })
+    const { id } = await params
+    const product = await prisma.product.findUnique({ where: { id } })
     if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
     const updates: Record<string, any> = {}
@@ -42,27 +47,27 @@ export async function POST(
     }
 
     if (Object.keys(updates).length > 0) {
-      await prisma.product.update({ where: { id: params.id }, data: updates })
+      await prisma.product.update({ where: { id }, data: updates })
     }
 
     // Delete ANY seeded reviews that don't match this product's niche
     // (Blunt but correct: wipe all pending/seeded reviews, leave user-submitted approved ones)
     const deletedReviews = await prisma.review.deleteMany({
-      where: { productId: params.id, status: 'pending' }
+      where: { productId: id, status: 'pending' }
     })
     if (deletedReviews.count > 0) {
       cleaned.push(`${deletedReviews.count} pending/seeded review(s) removed`)
     }
 
     // Re-run enrichment to generate fresh, clean marketing copy
-    const enrichResult = await enrichProductWithAI(params.id, product.title, product.niche)
+    const enrichResult = await enrichProductWithAI(id, product.title, product.niche)
 
     await prisma.systemLog.create({
       data: {
         level: 'info',
         source: 'admin:cleanup',
         message: `Cleaned and re-enriched "${product.title}"`,
-        meta: JSON.stringify({ productId: params.id, cleaned, enrichSuccess: enrichResult.success }),
+        meta: JSON.stringify({ productId: id, cleaned, enrichSuccess: enrichResult.success }),
       }
     })
 

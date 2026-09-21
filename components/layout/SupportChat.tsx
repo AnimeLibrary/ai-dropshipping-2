@@ -113,7 +113,13 @@ export default function SupportChat() {
   const formatText = (text: string) => {
     return text.split('\n').map((line, i) => {
       // Bold markdown **text**
-      const formatted = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      const escaped = line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+      const formatted = escaped.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       return (
         <p key={i} style={{ margin: i > 0 ? '6px 0 0' : 0, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: formatted || '&nbsp;' }} />
       )

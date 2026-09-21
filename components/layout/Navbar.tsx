@@ -1,17 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from '@clerk/nextjs'
+import VexsenAuthButton from '@/components/auth/VexsenAuthButton'
 import { useTheme } from './ThemeProvider'
 
 const NAV_LINKS = [
-  { href: '/collections', label: 'Shop' },
-  { href: '/guides', label: 'Guides' },
-  { href: '/problems', label: 'Problems' },
-  { href: '/bundles', label: 'Bundles' },
-  { href: '/about', label: 'Our Story' },
+  { href: '/#trending-products', label: 'Shop Products' },
+  { href: '/about', label: 'About' },
+  { href: '/contact', label: 'Support' },
 ]
 
 export default function Navbar() {
@@ -19,9 +17,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, toggle } = useTheme()
   const pathname = usePathname()
-  const { user } = useUser()
   const isHome = pathname === '/'
-  const isAdmin = user?.primaryEmailAddress?.emailAddress === 'brannenguidry28@gmail.com'
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
@@ -29,8 +25,9 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // Close mobile nav on route change
-  useEffect(() => { setMobileOpen(false) }, [pathname])
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
 
   return (
     <>
@@ -40,17 +37,43 @@ export default function Navbar() {
         aria-label="Main navigation"
       >
         <div className="container flex-between" style={{ width: '100%' }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <Link href="/" className="nav-logo" aria-label="Vexsen home" style={{ fontSize: '1.5rem', letterSpacing: '-0.03em' }}>
-              Vexsen
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Link href="/" className="nav-logo" aria-label="Vexsen home" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.5rem', letterSpacing: '-0.02em', textDecoration: 'none' }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #181824 0%, #0b0b10 100%)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 10px rgba(139,92,246,0.2)'
+              }}>
+                <svg width="20" height="20" viewBox="0 0 512 512" fill="none">
+                  <path
+                    d="M120 130 L220 130 L256 260 L292 130 L392 130 L296 382 C280 422 232 422 216 382 Z"
+                    fill="url(#navVexGrad)"
+                  />
+                  <path d="M256 310 L280 180 L232 180 Z" fill="#0b0b10" opacity="0.9" />
+                  <defs>
+                    <linearGradient id="navVexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#8b5cf6" />
+                      <stop offset="50%" stopColor="#ec4899" />
+                      <stop offset="100%" stopColor="#f43f5e" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+              <span style={{ fontWeight: 900, background: 'linear-gradient(135deg, #fff 40%, #c4b5fd 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                VEXSEN
+              </span>
             </Link>
-            <span className="hide-mobile" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+            <span className="hide-mobile" style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', borderLeft: '1px solid var(--color-border)', paddingLeft: '10px' }}>
               Engineered for Everyday Life
             </span>
           </div>
 
-          {/* Desktop Links */}
           <ul className="nav-links hide-mobile" role="list">
             {NAV_LINKS.map((link) => (
               <li key={link.href}>
@@ -63,22 +86,9 @@ export default function Navbar() {
                 </Link>
               </li>
             ))}
-            {isAdmin && (
-              <li>
-                <Link
-                  href="/admin"
-                  className={`nav-link ${pathname.startsWith('/admin') ? 'active' : ''}`}
-                  style={{ color: 'var(--color-accent)' }}
-                >
-                  ⚙️ Admin
-                </Link>
-              </li>
-            )}
           </ul>
 
-          {/* Right controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            {/* Theme Toggle */}
             <button
               id="theme-toggle-btn"
               className="theme-toggle"
@@ -90,37 +100,13 @@ export default function Navbar() {
             </button>
 
             <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center' }}>
-              <SignedOut>
-                <SignInButton mode="modal">
-                  <button 
-                    style={{ 
-                      background: 'transparent',
-                      border: 'none',
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 'var(--space-2)', 
-                      fontSize: 'var(--text-sm)', 
-                      fontWeight: 600, 
-                      color: 'var(--color-text-primary)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <span style={{ fontSize: '1.2rem' }}>👤</span>
-                    Login
-                  </button>
-                </SignInButton>
-              </SignedOut>
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
+              <VexsenAuthButton compact />
             </div>
 
-            {/* CTA */}
             <Link href="/solutions" className="btn btn-primary hide-mobile" id="nav-cta">
               Shop Now
             </Link>
 
-            {/* Hamburger */}
             <button
               id="mobile-menu-btn"
               className={`hamburger hide-desktop ${mobileOpen ? 'open' : ''}`}
@@ -136,7 +122,6 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile Nav Overlay */}
       <div
         className={`mobile-nav ${mobileOpen ? 'open' : ''}`}
         role="dialog"
@@ -151,9 +136,10 @@ export default function Navbar() {
             aria-label="Close menu"
             style={{ fontSize: '1.5rem', color: 'var(--color-text-primary)' }}
           >
-            ✕
+            x
           </button>
         </div>
+
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {NAV_LINKS.map((link) => (
             <Link
@@ -173,49 +159,10 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          {isAdmin && (
-            <Link
-              href="/admin"
-              style={{
-                padding: 'var(--space-4)',
-                fontSize: 'var(--text-xl)',
-                fontFamily: 'var(--font-heading)',
-                fontWeight: 700,
-                color: 'var(--color-accent)',
-                borderRadius: 'var(--radius-lg)',
-                transition: 'all var(--transition-fast)',
-              }}
-            >
-              ⚙️ Admin Panel
-            </Link>
-          )}
         </nav>
+
         <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-          <SignedOut>
-            <SignInButton mode="modal">
-              <button 
-                style={{ 
-                  background: 'transparent',
-                  border: 'none',
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  gap: 'var(--space-2)', 
-                  fontSize: 'var(--text-lg)', 
-                  fontWeight: 700, 
-                  color: 'var(--color-text-primary)' 
-                }}
-              >
-                <span>👤</span> Login
-              </button>
-            </SignInButton>
-          </SignedOut>
-          <SignedIn>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', padding: 'var(--space-2)' }}>
-              <UserButton />
-              <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700 }}>My Account</span>
-            </div>
-          </SignedIn>
+          <VexsenAuthButton fullWidth label="Login" signedInLabel="My Account" />
           <Link href="/solutions" className="btn btn-primary btn-lg" style={{ width: '100%' }}>
             Shop Now
           </Link>

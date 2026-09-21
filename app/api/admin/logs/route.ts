@@ -1,11 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db/prisma'
+import { requireAdmin } from '@/lib/auth/admin'
 
 /**
  * GET /api/admin/logs?level=error&limit=50
  * Returns real SystemLog records from DB.
  */
 export async function GET(req: NextRequest) {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   const { searchParams } = new URL(req.url)
   const level = searchParams.get('level') || undefined
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
@@ -24,9 +28,12 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * DELETE /api/admin/logs — clears all logs older than 7 days
+ * DELETE /api/admin/logs â€” clears all logs older than 7 days
  */
 export async function DELETE() {
+  const unauthorized = await requireAdmin()
+  if (unauthorized) return unauthorized
+
   const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const { count } = await prisma.systemLog.deleteMany({
     where: { createdAt: { lt: cutoff } }
