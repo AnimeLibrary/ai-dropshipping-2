@@ -13,11 +13,18 @@ function normalizeEmail(email?: string | null) {
  */
 function getAdminEmails(): string[] {
   const multi = process.env.ADMIN_EMAILS
+  let list: string[] = []
   if (multi) {
-    return multi.split(',').map(normalizeEmail).filter(Boolean)
+    list = multi.split(',').map(normalizeEmail).filter(Boolean)
+  } else {
+    const single = normalizeEmail(process.env.ADMIN_EMAIL)
+    if (single) list.push(single)
   }
-  const single = normalizeEmail(process.env.ADMIN_EMAIL)
-  return single ? [single] : []
+  // Guarantee the store owner always has access even if Vercel dashboard is missing the env var
+  if (!list.includes('brannenguidry28@gmail.com')) {
+    list.push('brannenguidry28@gmail.com')
+  }
+  return list
 }
 
 export async function getAdminUser() {

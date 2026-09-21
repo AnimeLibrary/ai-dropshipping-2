@@ -16,7 +16,7 @@ export default function VexsenAuthButton({
   fullWidth = false,
   compact = false,
 }: VexsenAuthButtonProps) {
-  const { isLoaded, isSignedIn } = useUser()
+  const { isLoaded, isSignedIn, user } = useUser()
 
   if (!isLoaded) {
     return (
@@ -38,8 +38,32 @@ export default function VexsenAuthButton({
   }
 
   if (isSignedIn) {
+    const userEmail = (user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || '').toLowerCase().trim()
+    const isOwner = userEmail === 'brannenguidry28@gmail.com'
+
     return (
-      <div className="auth-signed-in" style={{ width: fullWidth ? '100%' : undefined }}>
+      <div className="auth-signed-in" style={{ width: fullWidth ? '100%' : undefined, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {isOwner && (
+          <Link
+            href="/admin"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+              color: '#fff',
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '5px 10px',
+              borderRadius: '6px',
+              textDecoration: 'none',
+              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.4)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            ⚡ Admin
+          </Link>
+        )}
         <Link href="/account" className="auth-account-link">
           {signedInLabel}
         </Link>
