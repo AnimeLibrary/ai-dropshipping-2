@@ -25,7 +25,6 @@ export async function GET() {
     DATABASE_URL:           !!process.env.DATABASE_URL,
     CJ_EMAIL:               !!process.env.CJ_EMAIL,
     CJ_API_KEY:             !!process.env.CJ_API_KEY,
-    AUTODS_API_KEY:         !!process.env.AUTODS_API_KEY,
     RESEND_API_KEY:         !!process.env.RESEND_API_KEY,
     SERPER_API_KEY:         !!process.env.SERPER_API_KEY,
     ADMIN_EMAIL:            !!process.env.ADMIN_EMAIL,

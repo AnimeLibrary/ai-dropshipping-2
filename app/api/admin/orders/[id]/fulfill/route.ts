@@ -4,9 +4,7 @@ import { requireAdmin } from '@/lib/auth/admin'
 
 /**
  * GET /api/admin/orders/[id]/fulfill
- * Returns the AutoDS deep-link URL for manual order placement.
- * AutoDS manual order URL format:
- *   https://platform.autods.com/orders/manual-orders?url=<supplierUrl>&quantity=<qty>
+ * Returns the CJ Dropshipping order management link.
  */
 export async function GET(
   req: Request,
@@ -25,14 +23,7 @@ export async function GET(
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
-  // Build AutoDS manual order URL for the first supplier item
-  // (AutoDS manual order page accepts a product URL as a query param)
-  const firstItem = order.items[0]
-  const supplierUrl = firstItem?.supplierUrl || ''
-
-  const autoDSUrl = supplierUrl
-    ? `https://platform.autods.com/orders/manual-orders?productUrl=${encodeURIComponent(supplierUrl)}&qty=${firstItem.quantity}`
-    : 'https://platform.autods.com/orders/manual-orders'
+  const cjUrl = 'https://cjdropshipping.com/my/order-manage'
 
   return NextResponse.json({
     orderId: order.id,
@@ -40,7 +31,7 @@ export async function GET(
     customerEmail: order.customerEmail,
     totalAmount: order.totalAmount,
     status: order.status,
-    autoDSUrl,
+    cjUrl,
     items: order.items.map(item => ({
       productId: item.productId,
       supplierUrl: item.supplierUrl,

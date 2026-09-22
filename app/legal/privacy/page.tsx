@@ -18,7 +18,7 @@ export default function PrivacyPage() {
 
       <section style={{ marginBottom: 40 }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16 }}>3. Sharing Your Personal Information</h2>
-        <p>We share your Personal Information with third parties to help us use your Personal Information, as described above. For example, we use Stripe to power our online store. We also use Clerk for identity management and AutoDS for automated fulfillment.</p>
+        <p>We share your Personal Information with third parties to help us use your Personal Information, as described above. For example, we use Stripe to power our online store. We also use Clerk for identity management and CJ Dropshipping for automated fulfillment.</p>
       </section>
 
       <section style={{ marginBottom: 40 }}>

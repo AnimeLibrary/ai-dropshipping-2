@@ -36,20 +36,14 @@ export default function OrderQueue({ orders }: OrderQueueProps) {
     }))
   }
 
-  const handleOpenAutoDS = async (order: Order) => {
+  const handleOpenCJ = async (order: Order) => {
     setOrderStates(prev => ({ ...prev, [order.id]: { ...getState(order.id), loading: true } }))
 
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}/fulfill`)
-      const data = await res.json()
-
-      // Open CJ Dropshipping manual orders with supplier URL pre-filled (if available)
-      const cjUrl = data.items?.[0]?.supplierUrl
-        ? `https://app.cjdropshipping.com/order-cart.html`
-        : 'https://app.cjdropshipping.com/order-cart.html'
-      window.open(cjUrl, '_blank', 'noopener,noreferrer')
+      // Open CJ Dropshipping order management directly
+      window.open('https://cjdropshipping.com/my/order-manage', '_blank', 'noopener,noreferrer')
     } catch {
-      alert('Failed to open CJ Dropshipping. Try going to app.cjdropshipping.com directly.')
+      alert('Failed to open CJ Dropshipping. Try going to cjdropshipping.com directly.')
     } finally {
       setOrderStates(prev => ({ ...prev, [order.id]: { ...getState(order.id), loading: false } }))
     }
@@ -163,7 +157,7 @@ export default function OrderQueue({ orders }: OrderQueueProps) {
                     {/* Open in CJ Dropshipping */}
                     {!isFulfilled && (
                       <button
-                        onClick={() => handleOpenAutoDS(order)}
+                        onClick={() => handleOpenCJ(order)}
                         disabled={state.loading}
                         style={{
                           background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',

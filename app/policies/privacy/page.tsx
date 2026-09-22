@@ -34,7 +34,7 @@ export default function PrivacyPolicy() {
           </p>
           <ul className="list-disc pl-6 space-y-2">
             <li><b>Stripe:</b> For secure payment processing.</li>
-            <li><b>AutoDS & Logistics Partners:</b> Only the necessary address data to ship your item.</li>
+            <li><b>CJ Dropshipping & Logistics Partners:</b> Only the necessary address data to ship your item.</li>
             <li><b>Clerk:</b> For secure authentication and account management.</li>
           </ul>
         </section>

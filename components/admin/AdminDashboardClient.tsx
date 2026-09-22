@@ -1276,7 +1276,7 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
           <div>
             <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px' }}>Live Orders</h1>
             <div style={{ ...card, color:'#60a5fa', fontSize:12, marginBottom:20 }}>
-              ℹ️ Orders are written to DB when Stripe webhook fires. AutoDS push is queued on creation — activate with <code>AUTODS_API_KEY</code>.
+              ℹ️ Orders are logged in DB when Stripe checkout completes. Fulfillment is automatically dispatched to CJ Dropshipping via direct API.
             </div>
             {orders.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>No orders yet. Orders appear here when Stripe checkout completes.</div>}
             {orders.map(o => {

@@ -16,7 +16,6 @@ export interface SourcingResult {
 }
 
 export class SourcingService {
-  private autoDsKey = process.env.AUTODS_API_KEY
 
   /**
    * Finds a supplier match given a product title or competitor link.
@@ -24,7 +23,7 @@ export class SourcingService {
   async findSupplier(productTitle: string): Promise<SourcingResult | null> {
     console.log(`[Sourcing] Identifying best supplier for "${productTitle}"...`)
 
-    // Simulating API call to AutoDS or Serper for title-based price matching
+    // Simulating API call for title-based price matching
     // In production, this would search AliExpress/CJ via their Market API
     const supplierPrice = 14.50 // Simulated best found cost
     const retailPrice = calculateTargetPrice(supplierPrice)
