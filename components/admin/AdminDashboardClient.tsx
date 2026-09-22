@@ -102,6 +102,28 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   const [orders]                = useState(liveOrders)
   const [archived]              = useState(archivedProducts)
   const [reviews, setReviews]   = useState(pendingReviews)
+  const [referralList, setReferralList] = useState(referrals)
+  const [showNewRefModal, setShowNewRefModal] = useState(false)
+  const [newRefCode, setNewRefCode] = useState('')
+  const [newRefOwner, setNewRefOwner] = useState('')
+  const [newRefEmail, setNewRefEmail] = useState('')
+  const [editingRefId, setEditingRefId] = useState<string | null>(null)
+  const [editRefCode, setEditRefCode] = useState('')
+  const [editRefOwner, setEditRefOwner] = useState('')
+  const [editRefEmail, setEditRefEmail] = useState('')
+
+  const [seoClusterList, setSeoClusterList] = useState(seoClusters)
+  const [showNewSeoModal, setShowNewSeoModal] = useState(false)
+  const [newSeoKeyword, setNewSeoKeyword] = useState('')
+  const [newSeoVolume, setNewSeoVolume] = useState('1200')
+  const [newSeoIntent, setNewSeoIntent] = useState('commercial')
+  const [newSeoType, setNewSeoType] = useState('guide')
+  const [editingSeoId, setEditingSeoId] = useState<string | null>(null)
+  const [editSeoKeyword, setEditSeoKeyword] = useState('')
+  const [editSeoVolume, setEditSeoVolume] = useState('1200')
+  const [editSeoIntent, setEditSeoIntent] = useState('commercial')
+  const [editSeoType, setEditSeoType] = useState('guide')
+
   const [isChatOpen, setChat]   = useState(false)
   const [toast, setToast]       = useState<{ msg: string; type: 'ok'|'err' } | null>(null)
   const [status, setStatus]     = useState<SystemStatus | null>(null)
@@ -205,6 +227,220 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   const showToast = (msg: string, type: 'ok'|'err' = 'ok') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3500)
+  }
+
+  // ── Referrals CRUD Handlers ──
+  const handleCreateReferral = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newRefCode.trim()) return
+    setLoadingId('new-ref')
+    try {
+      const res = await fetch('/api/admin/referrals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newRefCode,
+          ownerName: newRefOwner,
+          ownerEmail: newRefEmail,
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create referral')
+      setReferralList(prev => [data.referral, ...prev])
+      setShowNewRefModal(false)
+      setNewRefCode('')
+      setNewRefOwner('')
+      setNewRefEmail('')
+      showToast(`Created promo code ${data.referral.code}!`)
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleUpdateReferral = async (id: string) => {
+    setLoadingId(`ref-${id}`)
+    try {
+      const res = await fetch(`/api/admin/referrals/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: editRefCode,
+          ownerName: editRefOwner,
+          ownerEmail: editRefEmail,
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update referral')
+      setReferralList(prev => prev.map(r => r.id === id ? data.referral : r))
+      setEditingRefId(null)
+      showToast('Updated referral code!')
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleDeleteReferral = async (id: string, code: string) => {
+    if (!confirm(`Delete referral code "${code}"?`)) return
+    setLoadingId(`del-ref-${id}`)
+    try {
+      const res = await fetch(`/api/admin/referrals/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+      setReferralList(prev => prev.filter(r => r.id !== id))
+      showToast(`Deleted referral code ${code}`)
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  // ── SEO Clusters CRUD Handlers ──
+  const handleCreateSeoCluster = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newSeoKeyword.trim()) return
+    setLoadingId('new-seo')
+    try {
+      const res = await fetch('/api/admin/seo/clusters', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: newSeoKeyword,
+          searchVolume: parseInt(newSeoVolume, 10) || 1000,
+          intent: newSeoIntent,
+          targetPageType: newSeoType,
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to create SEO cluster')
+      setSeoClusterList(prev => [data.cluster, ...prev])
+      setShowNewSeoModal(false)
+      setNewSeoKeyword('')
+      showToast(`Added cluster "${data.cluster.keyword}"!`)
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleUpdateSeoCluster = async (id: string) => {
+    setLoadingId(`seo-${id}`)
+    try {
+      const res = await fetch(`/api/admin/seo/clusters/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keyword: editSeoKeyword,
+          searchVolume: parseInt(editSeoVolume, 10) || 1000,
+          intent: editSeoIntent,
+          targetPageType: editSeoType,
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update SEO cluster')
+      setSeoClusterList(prev => prev.map(c => c.id === id ? data.cluster : c))
+      setEditingSeoId(null)
+      showToast('Updated keyword cluster!')
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleDeleteSeoCluster = async (id: string, keyword: string) => {
+    if (!confirm(`Delete keyword cluster "${keyword}"?`)) return
+    setLoadingId(`del-seo-${id}`)
+    try {
+      const res = await fetch(`/api/admin/seo/clusters/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+      setSeoClusterList(prev => prev.filter(c => c.id !== id))
+      showToast(`Deleted cluster "${keyword}"`)
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleGenerateSeoContent = async (id: string) => {
+    setLoadingId(`gen-seo-${id}`)
+    try {
+      const res = await fetch(`/api/admin/seo/clusters/${id}/generate`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to generate guide')
+      setSeoClusterList(prev => prev.map(c => c.id === id ? data.cluster : c))
+      showToast(`🚀 Deployed AI Guide for "${data.cluster.keyword}"!`)
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleScoutNicheKeywords = async () => {
+    setLoadingId('scout-seo')
+    try {
+      const res = await fetch('/api/admin/seo/scout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to scout niche')
+      // Merge unique clusters
+      setSeoClusterList(prev => {
+        const existingIds = new Set(prev.map(c => c.id))
+        const added = (data.clusters || []).filter((c: any) => !existingIds.has(c.id))
+        return [...added, ...prev]
+      })
+      showToast(`⚡ Scouted ${data.count || 0} high-intent clusters for niche "${data.niche}"!`)
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handlePingSearchEngines = async () => {
+    setLoadingId('ping-seo')
+    try {
+      const res = await fetch('/api/admin/seo/ping', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to ping search engines')
+      showToast(data.summary || '📡 Sitemap pinged to Google & Bing!')
+    } catch (err: any) {
+      showToast(err.message, 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
+  const handleDeployAllPending = async () => {
+    const pendingList = seoClusterList.filter(c => !c.hasContent)
+    if (pendingList.length === 0) {
+      showToast('All clusters already have live guides!', 'ok')
+      return
+    }
+    setLoadingId('deploy-all-seo')
+    showToast(`Deploying guides for ${pendingList.length} clusters...`)
+    let successCount = 0
+    for (const item of pendingList) {
+      try {
+        const res = await fetch(`/api/admin/seo/clusters/${item.id}/generate`, { method: 'POST' })
+        const data = await res.json()
+        if (res.ok && data.cluster) {
+          setSeoClusterList(prev => prev.map(c => c.id === item.id ? data.cluster : c))
+          successCount++
+        }
+      } catch {}
+    }
+    setLoadingId(null)
+    showToast(`✅ Successfully deployed ${successCount} new SEO guides!`)
   }
 
   // Fetch system status
@@ -1348,40 +1584,183 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
         {/* ── REFERRALS PANEL ── */}
         {panel === 'referrals' && (
           <div>
-            <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px', color: PANEL_COLOR.referrals }}>🎁 Referral Network</h1>
-            <p style={{ color:'#6b7280', marginBottom:20, fontSize:12 }}>Track generated promo codes, usage, and store credits owed to referrers.</p>
-            {referrals.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>No users have generated referral codes yet.</div>}
-            {referrals.map(r => (
-              <div key={r.id} style={{ ...card, borderColor: '#e8823a33' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: 12 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 20 }}>
+              <div>
+                <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 4px', color: PANEL_COLOR.referrals }}>🎁 Referral Network</h1>
+                <p style={{ color:'#6b7280', margin:0, fontSize:12 }}>Create custom promo codes, edit creators, and track store credits owed.</p>
+              </div>
+              <button
+                onClick={() => setShowNewRefModal(!showNewRefModal)}
+                style={{
+                  background: 'linear-gradient(135deg, #ea580c, #c2410c)',
+                  border: 'none', color: '#fff', borderRadius: 8,
+                  padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: 6
+                }}
+              >
+                {showNewRefModal ? '✕ Cancel' : '➕ Create Promo Code'}
+              </button>
+            </div>
+
+            {/* Create Referral Code Form */}
+            {showNewRefModal && (
+              <form onSubmit={handleCreateReferral} style={{ ...card, borderColor: '#ea580c66', marginBottom: 20, background: '#120d09' }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#fed7aa', margin: '0 0 12px' }}>New Referral / Promo Code</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 12 }}>
                   <div>
-                    <div style={{ fontWeight:900, fontSize:16, color:'#fdf0e6', letterSpacing:'0.05em' }}>{r.code}</div>
-                    <div style={{ fontSize:12, color:'#a8a29e', marginTop:4 }}>Owner: {r.ownerName || 'Unknown'} &lt;{r.ownerEmail}&gt;</div>
+                    <label style={{ fontSize: 11, color: '#a8a29e', display: 'block', marginBottom: 4 }}>Promo Code (e.g. TIKTOK15)</label>
+                    <input
+                      type="text"
+                      placeholder="TIKTOK15"
+                      value={newRefCode}
+                      onChange={e => setNewRefCode(e.target.value.toUpperCase())}
+                      required
+                      style={{ width: '100%', background: '#0a0a0f', border: '1px solid #ea580c44', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, outline: 'none' }}
+                    />
                   </div>
-                  <div style={{ textAlign:'right' }}>
-                    <div style={{ fontSize:12, color:'#a8a29e', marginBottom: 2 }}>Credits Earned</div>
-                    <div style={{ fontSize:18, fontWeight:800, color:'#4ade80' }}>${r.creditsEarned.toFixed(2)}</div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#a8a29e', display: 'block', marginBottom: 4 }}>Owner Name / Influencer</label>
+                    <input
+                      type="text"
+                      placeholder="Jack (Creator)"
+                      value={newRefOwner}
+                      onChange={e => setNewRefOwner(e.target.value)}
+                      style={{ width: '100%', background: '#0a0a0f', border: '1px solid #ea580c44', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, outline: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#a8a29e', display: 'block', marginBottom: 4 }}>Owner Email (Payouts/Credits)</label>
+                    <input
+                      type="email"
+                      placeholder="jack@gmail.com"
+                      value={newRefEmail}
+                      onChange={e => setNewRefEmail(e.target.value)}
+                      style={{ width: '100%', background: '#0a0a0f', border: '1px solid #ea580c44', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, outline: 'none' }}
+                    />
                   </div>
                 </div>
-                
-                {r.uses.length > 0 ? (
-                  <div style={{ background: '#0a0a0a', borderRadius: 8, padding: 12, border: '1px solid #1f1f1f' }}>
-                    <div style={{ fontSize:10, fontWeight:700, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Usage History</div>
-                    {r.uses.map(u => (
-                      <div key={u.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding: '6px 0', borderBottom: '1px solid #111' }}>
-                        <div>
-                          <div style={{ fontSize:12, color:'#f5f5f4' }}>{u.buyerEmail}</div>
-                          <div style={{ fontSize:10, color:'#57534e' }}>{new Date(u.createdAt).toLocaleDateString()}</div>
-                        </div>
-                        <div style={{ textAlign:'right' }}>
-                          <span style={{ fontSize:11, color:'#c96d22', marginRight:12 }}>Buyer Saved: ${u.discountAmount.toFixed(2)}</span>
-                          <Tag color={u.status === 'confirmed' ? '#22c55e' : '#f59e0b'}>{u.status.toUpperCase()}</Tag>
-                        </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewRefModal(false)}
+                    style={{ background: 'transparent', border: '1px solid #333', color: '#a8a29e', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loadingId === 'new-ref'}
+                    style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {loadingId === 'new-ref' ? 'Creating…' : 'Save Promo Code'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {referralList.length === 0 && <div style={{ ...card, color:'#4a4a6a', textAlign:'center', padding:32 }}>Zero referral codes found. Click "Create Promo Code" to add one.</div>}
+            
+            {referralList.map(r => (
+              <div key={r.id} style={{ ...card, borderColor: '#e8823a33', marginBottom: 16 }}>
+                {editingRefId === r.id ? (
+                  /* Edit Mode */
+                  <div style={{ padding: 4 }}>
+                    <h4 style={{ fontSize: 13, color: '#fed7aa', margin: '0 0 10px' }}>Editing Code: {r.code}</h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 12 }}>
+                      <div>
+                        <label style={{ fontSize: 10, color: '#a8a29e' }}>Code String</label>
+                        <input
+                          type="text"
+                          value={editRefCode}
+                          onChange={e => setEditRefCode(e.target.value.toUpperCase())}
+                          style={{ width: '100%', background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 4, padding: '5px 8px', fontSize: 12 }}
+                        />
                       </div>
-                    ))}
+                      <div>
+                        <label style={{ fontSize: 10, color: '#a8a29e' }}>Owner Name</label>
+                        <input
+                          type="text"
+                          value={editRefOwner}
+                          onChange={e => setEditRefOwner(e.target.value)}
+                          style={{ width: '100%', background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 4, padding: '5px 8px', fontSize: 12 }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 10, color: '#a8a29e' }}>Owner Email</label>
+                        <input
+                          type="email"
+                          value={editRefEmail}
+                          onChange={e => setEditRefEmail(e.target.value)}
+                          style={{ width: '100%', background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 4, padding: '5px 8px', fontSize: 12 }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                      <button onClick={() => setEditingRefId(null)} style={{ background: 'transparent', border: '1px solid #444', color: '#a8a29e', borderRadius: 4, padding: '4px 10px', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+                      <button onClick={() => handleUpdateReferral(r.id)} disabled={loadingId === `ref-${r.id}`} style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                        {loadingId === `ref-${r.id}` ? 'Saving…' : 'Save Changes'}
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div style={{ fontSize:12, color:'#57534e', fontStyle:'italic' }}>No uses yet.</div>
+                  /* Display Mode */
+                  <>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: 12 }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontWeight:900, fontSize:18, color:'#fdf0e6', letterSpacing:'0.05em' }}>{r.code}</span>
+                          <span style={{ fontSize: 11, background: '#e8823a22', color: '#ea580c', border: '1px solid #e8823a44', padding: '2px 8px', borderRadius: 4, fontWeight: 700 }}>15% DISCOUNT</span>
+                        </div>
+                        <div style={{ fontSize:12, color:'#a8a29e', marginTop:4 }}>Owner: {r.ownerName || 'Direct'} &lt;{r.ownerEmail}&gt;</div>
+                      </div>
+                      <div style={{ textAlign:'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
+                        <div>
+                          <div style={{ fontSize:11, color:'#a8a29e' }}>Credits Earned</div>
+                          <div style={{ fontSize:18, fontWeight:800, color:'#4ade80' }}>${r.creditsEarned.toFixed(2)}</div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => {
+                              setEditingRefId(r.id)
+                              setEditRefCode(r.code)
+                              setEditRefOwner(r.ownerName || '')
+                              setEditRefEmail(r.ownerEmail || '')
+                            }}
+                            style={{ background: '#3b82f622', border: '1px solid #3b82f644', color: '#60a5fa', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteReferral(r.id, r.code)}
+                            disabled={loadingId === `del-ref-${r.id}`}
+                            style={{ background: '#ef444422', border: '1px solid #ef444444', color: '#f87171', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {r.uses && r.uses.length > 0 ? (
+                      <div style={{ background: '#0a0a0a', borderRadius: 8, padding: 12, border: '1px solid #1f1f1f' }}>
+                        <div style={{ fontSize:10, fontWeight:700, color:'#57534e', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:8 }}>Usage History ({r.uses.length} uses)</div>
+                        {r.uses.map(u => (
+                          <div key={u.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding: '6px 0', borderBottom: '1px solid #111' }}>
+                            <div>
+                              <div style={{ fontSize:12, color:'#f5f5f4' }}>{u.buyerEmail}</div>
+                              <div style={{ fontSize:10, color:'#57534e' }}>{new Date(u.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <div style={{ textAlign:'right' }}>
+                              <span style={{ fontSize:11, color:'#c96d22', marginRight:12 }}>Buyer Saved: ${u.discountAmount.toFixed(2)}</span>
+                              <Tag color={u.status === 'confirmed' ? '#22c55e' : '#f59e0b'}>{u.status.toUpperCase()}</Tag>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:12, color:'#57534e', fontStyle:'italic' }}>No uses yet. Share this code with buyers or influencers.</div>
+                    )}
+                  </>
                 )}
               </div>
             ))}
@@ -1431,63 +1810,350 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
           </div>
         )}
 
-        {/* ── SEO FLEET STATUS PANEL ── */}
+        {/* ── SEO FLEET COMMAND CENTER (SEO KING) ── */}
         {panel === 'seo' && (
           <div>
-            <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px', color: PANEL_COLOR.seo }}>📈 SEO Fleet Status</h1>
-            <p style={{ color:'#6b7280', marginBottom:20, fontSize:12 }}>
-              Track all programmatic SEO pages and internal keyword clusters mapped to your drop-shipping products.
-            </p>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 16, marginBottom: 24 }}>
-              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#fdf0e6' }}>{seoClusters.length}</div>
-                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Total Clusters</div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h1 style={{ fontSize:20, fontWeight:800, margin:0, color: PANEL_COLOR.seo }}>👑 SEO Fleet Command</h1>
+                  <Tag color="#14b8a6">AUTONOMOUS SEARCH ENGINE ENGINE</Tag>
+                </div>
+                <p style={{ color:'#6b7280', margin:'4px 0 0', fontSize:12 }}>
+                  Automated organic search dominance: scout buyer keywords, generate deep empathetic problem-solution guides, link products, and force crawler re-indexing.
+                </p>
               </div>
-              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#34d399' }}>{seoClusters.filter(c => c.hasContent).length}</div>
-                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Generated Guides</div>
-              </div>
-              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center' }}>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#f59e0b' }}>{seoClusters.reduce((sum, c) => sum + c.productCount, 0)}</div>
-                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Products Mapped</div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleScoutNicheKeywords}
+                  disabled={loadingId === 'scout-seo'}
+                  style={{
+                    background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                    border: 'none', color: '#fff', borderRadius: 8,
+                    padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  {loadingId === 'scout-seo' ? '⚡ Scouting Niche...' : '⚡ AI Niche Scout'}
+                </button>
+
+                <button
+                  onClick={handleDeployAllPending}
+                  disabled={loadingId === 'deploy-all-seo'}
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    border: 'none', color: '#fff', borderRadius: 8,
+                    padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  {loadingId === 'deploy-all-seo' ? '🚀 Deploying Guides...' : '🚀 Deploy All Guides'}
+                </button>
+
+                <button
+                  onClick={handlePingSearchEngines}
+                  disabled={loadingId === 'ping-seo'}
+                  style={{
+                    background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+                    border: 'none', color: '#fff', borderRadius: 8,
+                    padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  {loadingId === 'ping-seo' ? '📡 Pinging Google...' : '📡 Ping Google & Bing'}
+                </button>
+
+                <button
+                  onClick={() => setShowNewSeoModal(!showNewSeoModal)}
+                  style={{
+                    background: '#1e1e2e',
+                    border: '1px solid #3e3e5e', color: '#e2e8f0', borderRadius: 8,
+                    padding: '8px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  {showNewSeoModal ? '✕ Close' : '➕ Manual Keyword'}
+                </button>
               </div>
             </div>
 
+            {/* Create SEO Cluster Form */}
+            {showNewSeoModal && (
+              <form onSubmit={handleCreateSeoCluster} style={{ ...card, borderColor: '#0d948866', marginBottom: 20, background: '#091312' }}>
+                <h3 style={{ fontSize: 14, fontWeight: 800, color: '#99f6e4', margin: '0 0 12px' }}>New Keyword Cluster Target</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#a8a29e', display: 'block', marginBottom: 4 }}>Target Keyword</label>
+                    <input
+                      type="text"
+                      placeholder="best ergonomic lumbar support for office"
+                      value={newSeoKeyword}
+                      onChange={e => setNewSeoKeyword(e.target.value)}
+                      required
+                      style={{ width: '100%', background: '#0a0a0f', border: '1px solid #0d948844', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, outline: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#a8a29e', display: 'block', marginBottom: 4 }}>Monthly Search Volume</label>
+                    <input
+                      type="number"
+                      placeholder="1800"
+                      value={newSeoVolume}
+                      onChange={e => setNewSeoVolume(e.target.value)}
+                      style={{ width: '100%', background: '#0a0a0f', border: '1px solid #0d948844', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, outline: 'none' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#a8a29e', display: 'block', marginBottom: 4 }}>Buyer Intent</label>
+                    <select
+                      value={newSeoIntent}
+                      onChange={e => setNewSeoIntent(e.target.value)}
+                      style={{ width: '100%', background: '#0a0a0f', border: '1px solid #0d948844', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, outline: 'none' }}
+                    >
+                      <option value="commercial">Commercial</option>
+                      <option value="transactional">Transactional</option>
+                      <option value="problem-solution">Problem-Solution</option>
+                      <option value="informational">Informational</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, color: '#a8a29e', display: 'block', marginBottom: 4 }}>Target Page Type</label>
+                    <select
+                      value={newSeoType}
+                      onChange={e => setNewSeoType(e.target.value)}
+                      style={{ width: '100%', background: '#0a0a0f', border: '1px solid #0d948844', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, outline: 'none' }}
+                    >
+                      <option value="guide">Guide</option>
+                      <option value="comparison">Comparison</option>
+                      <option value="solution">Solution</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewSeoModal(false)}
+                    style={{ background: 'transparent', border: '1px solid #333', color: '#a8a29e', borderRadius: 6, padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loadingId === 'new-seo'}
+                    style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 6, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {loadingId === 'new-seo' ? 'Adding…' : 'Add Cluster'}
+                  </button>
+                </div>
+              </form>
+            )}
+            
+            {/* KPI Overview */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 20 }}>
+              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center', borderColor: '#14b8a633' }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#fdf0e6' }}>{seoClusterList.length}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Total Fleet Targets</div>
+              </div>
+              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center', borderColor: '#10b98133' }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#34d399' }}>{seoClusterList.filter(c => c.hasContent).length}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Live Deployed Guides</div>
+              </div>
+              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center', borderColor: '#f59e0b33' }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#f59e0b' }}>{seoClusterList.filter(c => !c.hasContent).length}</div>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Pending Content Deployment</div>
+              </div>
+              <div style={{ ...card, marginBottom: 0, padding: 16, textAlign: 'center', borderColor: '#38bdf833' }}>
+                <div style={{ fontSize: 24, fontWeight: 900, color: '#38bdf8' }}>
+                  {seoClusterList.reduce((sum, c) => sum + (c.searchVolume || 0), 0).toLocaleString()}
+                </div>
+                <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', marginTop: 4, fontWeight: 600 }}>Monthly Search Opportunity</div>
+              </div>
+            </div>
+
+            {/* Google SERP Live Simulator Card */}
+            {seoClusterList.length > 0 && (
+              <div style={{ ...card, background: '#0a0d14', borderColor: '#1e293b', marginBottom: 20, padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#38bdf8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    🔍 Google Search SERP Simulator (Live Snippet Preview)
+                  </span>
+                  <Tag color="#38bdf8">Rich FAQ Schema Active</Tag>
+                </div>
+                <div style={{ background: '#05070a', border: '1px solid #1e293b', borderRadius: 8, padding: 14 }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span>https://vexsen.com</span>
+                    <span>›</span>
+                    <span>guides</span>
+                    <span>›</span>
+                    <span style={{ color: '#cbd5e1' }}>{seoClusterList[0].keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-')}</span>
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 600, color: '#60a5fa', marginBottom: 4, cursor: 'pointer' }}>
+                    {seoClusterList[0].keyword.replace(/\b\w/g, l => l.toUpperCase())} — Complete Guide | Vexsen
+                  </div>
+                  <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.4, marginBottom: 6 }}>
+                    Struggling with {seoClusterList[0].keyword.toLowerCase()}? Discover the verified root causes, why generic solutions fail, and inspect medical-grade options with 30-day risk-free guarantee.
+                  </div>
+                  <div style={{ fontSize: 11, color: '#fbbf24', display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <span>★★★★★ 4.9 (128 reviews)</span>
+                    <span style={{ color: '#22c55e' }}>✓ In Stock</span>
+                    <span style={{ color: '#94a3b8' }}>• Free 30-day returns</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SEO Clusters Table */}
             <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 12 }}>
                 <thead style={{ background: '#0a0a0f', borderBottom: '1px solid #1e1e2e' }}>
                   <tr>
-                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>KEYWORD CLUSTER</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>KEYWORD TARGET</th>
                     <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>INTENT / TYPE</th>
-                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>VOL</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>EST. VOL</th>
                     <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>PRODUCTS</th>
-                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600, textAlign: 'right' }}>STATUS</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600 }}>STATUS</th>
+                    <th style={{ padding: '12px 16px', color: '#6b7280', fontWeight: 600, textAlign: 'right' }}>OPERATIONS</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {seoClusters.map((c, i) => (
-                    <tr key={c.id} style={{ borderBottom: i === seoClusters.length - 1 ? 'none' : '1px solid #1e1e2e' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 600, color: '#fdf0e6' }}>{c.keyword}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <Tag color="#7c3aed">{c.intent}</Tag>
-                        <span style={{ color:'#6b7280', marginLeft: 6 }}>{c.targetPageType}</span>
-                      </td>
-                      <td style={{ padding: '12px 16px', color: '#a78bfa' }}>{c.searchVolume.toLocaleString()}</td>
-                      <td style={{ padding: '12px 16px', color: '#a8a29e' }}>{c.productCount} mapped</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        {c.hasContent ? (
-                          <Tag color="#22c55e">✅ Live</Tag>
-                        ) : (
-                          <Tag color="#f59e0b">⏳ Awaiting AI</Tag>
-                        )}
-                      </td>
+                  {seoClusterList.map((c, i) => (
+                    <tr key={c.id} style={{ borderBottom: i === seoClusterList.length - 1 ? 'none' : '1px solid #1e1e2e' }}>
+                      {editingSeoId === c.id ? (
+                        /* Edit Row Mode */
+                        <>
+                          <td style={{ padding: '10px 12px' }}>
+                            <input
+                              type="text"
+                              value={editSeoKeyword}
+                              onChange={e => setEditSeoKeyword(e.target.value)}
+                              style={{ width: '100%', background: '#0a0a0f', border: '1px solid #14b8a6', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 12 }}
+                            />
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                              <select
+                                value={editSeoIntent}
+                                onChange={e => setEditSeoIntent(e.target.value)}
+                                style={{ background: '#0a0a0f', border: '1px solid #14b8a6', color: '#fff', borderRadius: 4, padding: '4px 6px', fontSize: 11 }}
+                              >
+                                <option value="commercial">Commercial</option>
+                                <option value="transactional">Transactional</option>
+                                <option value="problem-solution">Problem-Solution</option>
+                                <option value="informational">Informational</option>
+                              </select>
+                              <select
+                                value={editSeoType}
+                                onChange={e => setEditSeoType(e.target.value)}
+                                style={{ background: '#0a0a0f', border: '1px solid #14b8a6', color: '#fff', borderRadius: 4, padding: '4px 6px', fontSize: 11 }}
+                              >
+                                <option value="guide">guide</option>
+                                <option value="comparison">comparison</option>
+                                <option value="solution">solution</option>
+                              </select>
+                            </div>
+                          </td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <input
+                              type="number"
+                              value={editSeoVolume}
+                              onChange={e => setEditSeoVolume(e.target.value)}
+                              style={{ width: 70, background: '#0a0a0f', border: '1px solid #14b8a6', color: '#fff', borderRadius: 4, padding: '4px 6px', fontSize: 12 }}
+                            />
+                          </td>
+                          <td style={{ padding: '10px 12px', color: '#a8a29e' }}>{c.productCount} mapped</td>
+                          <td style={{ padding: '10px 12px' }}>
+                            <Tag color="#14b8a6">Editing</Tag>
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                              <button onClick={() => setEditingSeoId(null)} style={{ background: 'transparent', border: '1px solid #444', color: '#a8a29e', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>Cancel</button>
+                              <button onClick={() => handleUpdateSeoCluster(c.id)} disabled={loadingId === `seo-${c.id}`} style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 4, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                                {loadingId === `seo-${c.id}` ? '…' : 'Save'}
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        /* Normal Row Mode */
+                        <>
+                          <td style={{ padding: '12px 16px', fontWeight: 600, color: '#fdf0e6' }}>
+                            <div>{c.keyword}</div>
+                            <div style={{ fontSize: 11, color: '#6b7280', fontFamily: 'monospace', marginTop: 2 }}>
+                              /guides/{(c as any).targetSlug || c.keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-')}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <Tag color="#7c3aed">{c.intent}</Tag>
+                            <span style={{ color:'#6b7280', marginLeft: 6 }}>{c.targetPageType}</span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#a78bfa', fontWeight: 700 }}>{c.searchVolume.toLocaleString()}</td>
+                          <td style={{ padding: '12px 16px', color: '#a8a29e' }}>{c.productCount} mapped</td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {c.hasContent ? (
+                              <Tag color="#22c55e">✅ Live Guide</Tag>
+                            ) : (
+                              <Tag color="#f59e0b">⏳ Awaiting Content</Tag>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                              {c.hasContent ? (
+                                <a
+                                  href={`/guides/${(c as any).targetSlug || c.keyword.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    background: '#22c55e18', border: '1px solid #22c55e44',
+                                    color: '#4ade80', borderRadius: 4, padding: '4px 8px',
+                                    fontSize: 11, textDecoration: 'none', fontWeight: 700
+                                  }}
+                                >
+                                  👁️ View Page
+                                </a>
+                              ) : (
+                                <button
+                                  onClick={() => handleGenerateSeoContent(c.id)}
+                                  disabled={loadingId === `gen-seo-${c.id}`}
+                                  style={{
+                                    background: '#10b98122', border: '1px solid #10b98155',
+                                    color: '#34d399', borderRadius: 4, padding: '4px 8px',
+                                    fontSize: 11, cursor: 'pointer', fontWeight: 700
+                                  }}
+                                >
+                                  {loadingId === `gen-seo-${c.id}` ? '⏳ Writing…' : '🤖 Generate AI Guide'}
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setEditingSeoId(c.id)
+                                  setEditSeoKeyword(c.keyword)
+                                  setEditSeoVolume(String(c.searchVolume))
+                                  setEditSeoIntent(c.intent)
+                                  setEditSeoType(c.targetPageType)
+                                }}
+                                style={{ background: '#0d948822', border: '1px solid #0d948844', color: '#2dd4bf', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                onClick={() => handleDeleteSeoCluster(c.id, c.keyword)}
+                                disabled={loadingId === `del-seo-${c.id}`}
+                                style={{ background: '#ef444422', border: '1px solid #ef444444', color: '#f87171', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
-                  {seoClusters.length === 0 && (
+                  {seoClusterList.length === 0 && (
                     <tr>
-                      <td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', color: '#4a4a6a' }}>
-                        No keyword clusters found. Add products to trigger semantic clustering.
+                      <td colSpan={6} style={{ padding: '32px 16px', textAlign: 'center', color: '#4a4a6a' }}>
+                        No keyword clusters found. Click "⚡ AI Niche Scout" above to auto-generate target search traffic.
                       </td>
                     </tr>
                   )}

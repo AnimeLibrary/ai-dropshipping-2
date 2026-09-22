@@ -86,6 +86,39 @@ const stockService = new StockService()
         shipping_address_collection: {
           allowed_countries: ['US', 'CA', 'GB', 'AU'],
         },
+        shipping_options: [
+          {
+            shipping_rate_data: {
+              type: 'fixed_amount',
+              fixed_amount: {
+                amount: 495, // $4.95 Standard Tracked & Insured
+                currency: 'usd',
+              },
+              display_name: 'Standard Tracked & Insured Delivery',
+              delivery_estimate: {
+                minimum: { unit: 'business_day', value: 7 },
+                maximum: { unit: 'business_day', value: 12 },
+              },
+            },
+          },
+          {
+            shipping_rate_data: {
+              type: 'fixed_amount',
+              fixed_amount: {
+                amount: 895, // $8.95 Priority Expedited
+                currency: 'usd',
+              },
+              display_name: 'Priority Insured & Expedited Dispatch',
+              delivery_estimate: {
+                minimum: { unit: 'business_day', value: 4 },
+                maximum: { unit: 'business_day', value: 8 },
+              },
+            },
+          },
+        ],
+        automatic_tax: {
+          enabled: false,
+        },
         phone_number_collection: {
           enabled: true,
         },

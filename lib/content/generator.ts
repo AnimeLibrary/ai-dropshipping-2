@@ -39,7 +39,7 @@ export function generateGuideContent(cluster: any): GeneratedPageContent {
   const ai = cluster.aiContent as any
 
   return {
-    metaTitle: `${toTitleCase(cluster.keyword)} — Complete Guide | TrendDrop`,
+    metaTitle: `${toTitleCase(cluster.keyword)} — Complete Guide | Vexsen`,
     metaDescription: ai?.empathyIntro || `Struggling with ${cluster.painPoint.toLowerCase()}? Here's what actually works — plus the products that solve it for good.`,
     h1: toTitleCase(cluster.keyword),
     heroSubline: ai?.empathyIntro || `Here's why this happens — and the exact solution that works.`,

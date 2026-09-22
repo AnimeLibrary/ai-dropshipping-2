@@ -106,8 +106,15 @@ export default function CheckoutButton({
         )}
       </button>
 
+      {/* Shipping fee & zero tax notice */}
+      <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+        <span>📦 Shipping ($4.95) verified at final step</span>
+        <span>•</span>
+        <span style={{ color: '#22c55e', fontWeight: 600 }}>No tax</span>
+      </div>
+
       {/* Promo Code Toggle */}
-      <div style={{ marginTop: 'var(--space-3)' }}>
+      <div style={{ marginTop: 'var(--space-2)' }}>
         {!showPromo ? (
           <button
             onClick={() => setShowPromo(true)}
