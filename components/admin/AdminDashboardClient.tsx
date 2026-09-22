@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import AdminChat from '@/components/admin/AdminChat'
 
 // ── Types ────────────────────────────────────────────────────
 interface ProductVariant {
@@ -127,6 +126,7 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
   // Auto Margin Calculator Widget State
   const [calcCost, setCalcCost] = useState<number>(8.50)
   const [calcRetail, setCalcRetail] = useState<number>(29.99)
+  const [productRetailOverrides, setProductRetailOverrides] = useState<Record<string, number>>({})
 
   // Custom Media Manager (Add Pictures / AI Videos directly)
   const [newMediaUrl, setNewMediaUrl] = useState<Record<string, string>>({})
@@ -383,18 +383,26 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
     }
   }
 
-  const handleCjImport = async (pid: string, niche = 'general') => {
+  const handleCjImport = async (pid: string, niche = 'general', customRetail?: number) => {
     setImportingPid(pid)
     try {
       const res = await fetch('/api/admin/cj/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pid, niche, markupFactor: cjMarkup })
+        body: JSON.stringify({
+          pid,
+          niche,
+          markupFactor: cjMarkup,
+          retailPrice: customRetail && customRetail > 0 ? customRetail : undefined,
+          compareAtPrice: customRetail && customRetail > 0 ? Math.round(customRetail * 1.4 * 100) / 100 : undefined
+        })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Import failed')
       showToast(`⚡ Imported "${data.product.title.slice(0, 28)}..." to Pipeline!`)
       setPending(prev => [data.product, ...prev])
+      setPanel('products')
+      setProductsTab('pipeline')
     } catch (e: any) {
       showToast(e.message, 'err')
     } finally {
@@ -468,12 +476,6 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
             </button>
           ))}
         </div>
-
-        <div style={{ padding:'12px 16px', borderTop:'1px solid #1e1e2e' }}>
-          <button onClick={()=>setChat(!isChatOpen)} style={{ width:'100%', background:'rgba(124,58,237,0.1)', border:'1px solid #7c3aed44', borderRadius:8, color:'#c4b5fd', cursor:'pointer', padding:'8px 0', fontWeight:700, fontSize:12 }}>
-            {isChatOpen ? '✕ Close AI Agent' : '💬 Open AI Agent'}
-          </button>
-        </div>
       </div>
 
       {/* ── Main Panel ── */}
@@ -486,14 +488,14 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:12 }}>
                 <div>
                   <h1 style={{ fontSize:22, fontWeight:900, margin:0, color:'#60a5fa', display:'flex', alignItems:'center', gap:8 }}>
-                    ⚡ CJ Dropshipping Hunter
+                    ⚡ CJ Dropshipping Manual Pipeline
                   </h1>
                   <p style={{ color:'#94a3b8', fontSize:13, margin:'6px 0 0' }}>
-                    Full manual control. Search CJ's verified supplier catalog, preview profit margins, and import in 1 click.
+                    Step 1: Search CJ catalog → Step 2: Use margin calculator to tune retail price → Step 3: Click Import → Step 4: Customize pictures/videos in Pipeline → Step 5: Push to Stripe & Launch.
                   </p>
                 </div>
                 <div style={{ display:'flex', alignItems:'center', gap:8, background:'#111118', padding:'6px 12px', borderRadius:8, border:'1px solid #1e1e2e' }}>
-                  <span style={{ fontSize:11, color:'#6b7280', fontWeight:700 }}>MARKUP:</span>
+                  <span style={{ fontSize:11, color:'#6b7280', fontWeight:700 }}>DEFAULT MARKUP:</span>
                   {[2.0, 2.5, 3.0].map(m => (
                     <button key={m} onClick={() => setCjMarkup(m)} style={{
                       background: cjMarkup === m ? '#3b82f633' : '#1e1e2e',
@@ -710,26 +712,73 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                           {prod.title}
                         </div>
 
-                        {/* Financials */}
-                        <div style={{ background:'#09090f', borderRadius:6, padding:8, border:'1px solid #1a1a28', marginBottom:10 }}>
-                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
-                            <span style={{ color:'#64748b' }}>Cost:</span>
-                            <span style={{ color:'#94a3b8', fontWeight:700 }}>${cost.toFixed(2)}</span>
-                          </div>
-                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
-                            <span style={{ color:'#64748b' }}>Retail ({cjMarkup}x):</span>
-                            <span style={{ color:'#38bdf8', fontWeight:800 }}>${retail.toFixed(2)}</span>
-                          </div>
-                          <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, borderTop:'1px solid #1a1a28', paddingTop:4 }}>
-                            <span style={{ color:'#64748b' }}>Profit:</span>
-                            <span style={{ color:'#4ade80', fontWeight:800 }}>+${marginDollars.toFixed(2)} ({marginPct}%)</span>
-                          </div>
-                        </div>
+                        {/* Financials & Live Margin Adjuster */}
+                        {(() => {
+                          const userRetail = productRetailOverrides[prod.pid] !== undefined
+                            ? productRetailOverrides[prod.pid]
+                            : retail
+                          const stripeFee = Math.round((userRetail * 0.029 + 0.30) * 100) / 100
+                          const liveProfit = Math.round((userRetail - cost - stripeFee) * 100) / 100
+                          const liveMarginPct = userRetail > 0 ? Math.round((liveProfit / userRetail) * 100) : 0
+                          const isStrong = liveMarginPct >= 40 && liveProfit >= 10
+
+                          return (
+                            <div style={{ background:'#09090f', borderRadius:6, padding:8, border:'1px solid #1a1a28', marginBottom:10 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
+                                <span style={{ color:'#64748b' }}>CJ Cost:</span>
+                                <span style={{ color:'#94a3b8', fontWeight:700 }}>${cost.toFixed(2)}</span>
+                              </div>
+                              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11, marginBottom:4 }}>
+                                <span style={{ color:'#64748b' }}>Your Retail:</span>
+                                <div style={{ display:'flex', alignItems:'center', gap:2 }}>
+                                  <span style={{ color:'#38bdf8', fontSize:11 }}>$</span>
+                                  <input
+                                    type="number"
+                                    step="0.50"
+                                    min={cost}
+                                    value={userRetail}
+                                    onChange={e => {
+                                      const val = parseFloat(e.target.value) || 0
+                                      setProductRetailOverrides(prev => ({ ...prev, [prod.pid]: val }))
+                                    }}
+                                    style={{
+                                      width: 64,
+                                      background: '#040408',
+                                      border: '1px solid #28283c',
+                                      color: '#38bdf8',
+                                      fontWeight: 800,
+                                      fontSize: 11,
+                                      borderRadius: 4,
+                                      padding: '2px 4px',
+                                      textAlign: 'right',
+                                      outline: 'none'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'#64748b', marginBottom:4 }}>
+                                <span>Stripe Fee:</span>
+                                <span>-${stripeFee.toFixed(2)}</span>
+                              </div>
+                              <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, borderTop:'1px solid #1a1a28', paddingTop:4 }}>
+                                <span style={{ color:'#64748b' }}>Net Profit:</span>
+                                <span style={{ color: isStrong ? '#4ade80' : '#f87171', fontWeight:800 }}>
+                                  +${liveProfit.toFixed(2)} ({liveMarginPct}%)
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        })()}
                       </div>
 
                       {/* Import Action */}
                       <button
-                        onClick={() => handleCjImport(prod.pid, cjKeyword)}
+                        onClick={() => {
+                          const finalRetail = productRetailOverrides[prod.pid] !== undefined
+                            ? productRetailOverrides[prod.pid]
+                            : retail
+                          handleCjImport(prod.pid, cjKeyword, finalRetail)
+                        }}
                         disabled={isImporting}
                         style={{
                           width:'100%', background: isImporting ? '#1e293b' : 'linear-gradient(135deg, #16a34a, #22c55e)',
@@ -907,12 +956,82 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                           </div>
                         )}
 
-                        {/* ── 3. ENRICH button ── */}
-                        <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
-                          <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
-                            {loadingId===`enrich-${p.id}` ? '⏳…' : '✨ Enrich Copy'}
-                          </button>
-                        </div>
+                        {/* ── 3. MEDIA & LANDING PAGE CUSTOMIZER ── */}
+                        {(() => {
+                          let cardImages: string[] = []
+                          try { cardImages = p.heroImage?.startsWith('[') ? JSON.parse(p.heroImage) : p.heroImage ? [p.heroImage] : [] } catch {}
+
+                          return (
+                            <div style={{ background: '#0a0a10', border: '1px solid #1f1f2e', borderRadius: 8, padding: 12, marginTop: 12 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <div style={{ fontSize: 11, color: '#e2e8f0', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span>🎬 Landing Page Pictures & Videos ({cardImages.length})</span>
+                                </div>
+                              </div>
+
+                              {/* Add New Media Input */}
+                              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                                <input
+                                  placeholder="Paste image URL (.jpg/.png) or AI Video (.mp4, YouTube, Vimeo)..."
+                                  value={newMediaUrl[p.id] || ''}
+                                  onChange={e => setNewMediaUrl({ ...newMediaUrl, [p.id]: e.target.value })}
+                                  onKeyDown={e => e.key === 'Enter' && handleAddMedia(p.id, p.heroImage || null)}
+                                  style={{ flex: 1, background: '#07070b', border: '1px solid #28283c', color: '#fff', borderRadius: 6, padding: '7px 12px', fontSize: 11, outline: 'none' }}
+                                />
+                                <button
+                                  onClick={() => handleAddMedia(p.id, p.heroImage || null)}
+                                  disabled={loadingId === `media-${p.id}` || !newMediaUrl[p.id]?.trim()}
+                                  style={{
+                                    background: 'linear-gradient(135deg, #7c3aed, #a855f7)', border: 'none', color: '#fff',
+                                    borderRadius: 6, padding: '0 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                                    opacity: !newMediaUrl[p.id]?.trim() ? 0.5 : 1
+                                  }}
+                                >
+                                  {loadingId === `media-${p.id}` ? 'Adding…' : '+ Add Media'}
+                                </button>
+                              </div>
+
+                              {/* Gallery / Video Previews with Delete Buttons */}
+                              {cardImages.length > 0 ? (
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                  {cardImages.map((mediaUrl, i) => {
+                                    const isVid = mediaUrl.toLowerCase().endsWith('.mp4') || mediaUrl.includes('youtube') || mediaUrl.includes('vimeo')
+                                    return (
+                                      <div key={i} style={{ position: 'relative', width: 68, height: 68, borderRadius: 6, overflow: 'hidden', border: '1px solid #232338', background: '#000' }}>
+                                        {isVid ? (
+                                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e', fontSize: 18, background: '#181824' }}>
+                                            ▶
+                                          </div>
+                                        ) : (
+                                          <img src={mediaUrl} alt={`media-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        )}
+                                        <button
+                                          onClick={() => handleRemoveMedia(p.id, p.heroImage || null, mediaUrl)}
+                                          title="Delete picture"
+                                          style={{
+                                            position: 'absolute', top: 2, right: 2, width: 18, height: 18,
+                                            background: 'rgba(239,68,68,0.9)', color: '#fff', borderRadius: '50%',
+                                            fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            cursor: 'pointer', border: 'none', fontWeight: 900
+                                          }}
+                                        >
+                                          ✕
+                                        </button>
+                                        {isVid && (
+                                          <span style={{ position: 'absolute', bottom: 2, left: 2, background: 'rgba(0,0,0,0.8)', color: '#f43f5e', fontSize: 7, fontWeight: 800, padding: '1px 3px', borderRadius: 2 }}>
+                                            VIDEO
+                                          </span>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              ) : (
+                                <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>No media yet. Best CJ pictures load automatically or paste custom links above.</p>
+                              )}
+                            </div>
+                          )
+                        })()}
 
                       </div>
                     )
@@ -934,7 +1053,6 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                             {loadingId===`stripe-${p.id}` ? '⏳…' : '💳 Push to Stripe'}
                           </button>
                         )}
-                        <button onClick={()=>handleEnrich(p.id, p.title)} disabled={loadingId===`enrich-${p.id}`} style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'4px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>{loadingId===`enrich-${p.id}` ? '⏳…' : '✨ Enrich'}</button>
                         <Tag color='#22c55e'>APPROVED</Tag>
                       </div>
                     </div>
@@ -1000,9 +1118,6 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                           )}
                           <button onClick={e=>{e.stopPropagation();handleSeoPush(p.id,p.title)}} disabled={loadingId===`seo-${p.id}`} title="Push SEO cluster" style={{ background:'#14b8a622', border:'1px solid #14b8a644', color:'#5eead4', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
                             {loadingId===`seo-${p.id}` ? '⏳' : '📈 SEO'}
-                          </button>
-                          <button onClick={e=>{e.stopPropagation();handleEnrich(p.id,p.title)}} disabled={loadingId===`enrich-${p.id}`} title="Re-enrich AI copy" style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
-                            {loadingId===`enrich-${p.id}` ? '⏳' : '✨ Enrich'}
                           </button>
                           <span style={{ color:'#4a4a6a', fontSize:14 }}>{isExpanded ? '▲' : '▼'}</span>
                         </div>
@@ -1136,9 +1251,6 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                             )}
                             <button onClick={()=>handleSeoPush(p.id,p.title)} disabled={loadingId===`seo-${p.id}`} style={{ background:'#14b8a622', border:'1px solid #14b8a644', color:'#5eead4', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
                               {loadingId===`seo-${p.id}` ? '⏳ Pushing…' : '📈 Force SEO Push'}
-                            </button>
-                            <button onClick={()=>handleEnrich(p.id,p.title)} disabled={loadingId===`enrich-${p.id}`} style={{ background:'#a78bfa22', border:'1px solid #a78bfa44', color:'#c4b5fd', borderRadius:6, padding:'5px 12px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
-                              {loadingId===`enrich-${p.id}` ? '⏳ Enriching…' : '✨ Re-Enrich'}
                             </button>
                           </div>
                         </div>
@@ -1505,9 +1617,6 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
         )}
 
       </div>
-
-      {/* ── AI Chat ── */}
-      <AdminChat isOpen={isChatOpen} onClose={() => setChat(false)} />
     </div>
   )
 }

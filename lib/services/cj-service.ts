@@ -59,10 +59,11 @@ export class CJService {
     if (this.accessToken && Date.now() < this.tokenExpiry) {
       return this.accessToken
     }
+    // CJ API 2.0 expects { apiKey: "..." }
     const res = await fetch(`${CJ_BASE}/authentication/getAccessToken`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: this.email, password: this.apiKey })
+      body: JSON.stringify({ apiKey: this.apiKey })
     })
     const data = await res.json()
     if (!data.data?.accessToken) {
@@ -122,7 +123,7 @@ export class CJService {
   /**
    * Directly imports a CJ product by PID into the Prisma database with all variants and suppliers.
    */
-  async importProduct(pid: string, niche = 'general', markupFactor = 2.5) {
+  async importProduct(pid: string, niche = 'general', markupFactor = 2.5, customRetailPrice?: number, customCompareAtPrice?: number, customTitle?: string) {
     const full = await this.getFullProductWithVariants(pid)
     if (!full) throw new Error(`CJ product ${pid} not found`)
 
@@ -135,28 +136,33 @@ export class CJService {
       return existing
     }
 
-    const baseSlug = full.title
+    const titleToUse = customTitle || full.title
+    const baseSlug = titleToUse
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/(^-|-$)/g, '')
       .slice(0, 45) || 'product'
     const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`
 
-    const retailPrice = Math.round(full.supplierPrice * markupFactor * 100) / 100
-    const compareAtPrice = Math.round(retailPrice * 1.5 * 100) / 100
+    const retailPrice = customRetailPrice && customRetailPrice > 0 
+      ? customRetailPrice 
+      : Math.round(full.supplierPrice * markupFactor * 100) / 100
+    const compareAtPrice = customCompareAtPrice && customCompareAtPrice > 0
+      ? customCompareAtPrice
+      : Math.round(retailPrice * 1.4 * 100) / 100
 
     const created = await prisma.product.create({
       data: {
         slug,
-        title: full.title,
-        shortDescription: `Curated high-performance ${niche.replace(/-/g, ' ')} solution. Engineered for durability, maximum comfort, and verified results.`,
+        title: titleToUse,
+        shortDescription: `Premium engineered ${niche.replace(/-/g, ' ')} solution. Built for daily comfort, superior durability, and proven results.`,
         category: full.categoryName || 'General',
         niche,
         price: retailPrice,
         compareAtPrice,
         supplierPrice: full.supplierPrice,
         heroImage: full.images && full.images.length > 0 ? JSON.stringify(full.images) : full.image,
-        trendScore: 88,
+        trendScore: 90,
         source: 'CJ Dropshipping',
         validationStatus: 'pending',
         cjProductId: full.pid,

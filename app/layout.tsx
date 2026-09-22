@@ -21,13 +21,36 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   keywords: ['premium products', 'vexsen', 'lifestyle solutions', 'quality goods'],
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/apple-icon', sizes: '180x180', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: ['/icon.svg'],
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
     siteName: 'Vexsen',
     url: siteConfig.url,
+    images: [
+      {
+        url: `${siteConfig.url}/icon.svg`,
+        width: 512,
+        height: 512,
+        alt: 'Vexsen Brand Emblem',
+      },
+    ],
   },
-  twitter: { card: 'summary_large_image' },
+  twitter: {
+    card: 'summary_large_image',
+    images: [`${siteConfig.url}/icon.svg`],
+  },
   robots: {
     index: true,
     follow: true,
@@ -40,12 +63,27 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const orgSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Vexsen',
+    url: siteConfig.url,
+    logo: `${siteConfig.url}/icon.svg`,
+    image: `${siteConfig.url}/icon.svg`,
+  }
+
   return (
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dWx0aW1hdGUtZWdyZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA'}>
       <html lang="en" suppressHydrationWarning>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" href="/favicon.ico" />
+          <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+          <link rel="alternate icon" href="/favicon.ico" />
+          <link rel="apple-touch-icon" href="/apple-icon" />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+          />
         </head>
         <body>
           <AdsTrackingProvider>

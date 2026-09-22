@@ -1,27 +1,84 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <linearGradient id="vexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8b5cf6" />
-      <stop offset="50%" stop-color="#ec4899" />
+    <!-- Background Gradient -->
+    <radialGradient id="vexBg" cx="50%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#1e1838" />
+      <stop offset="50%" stop-color="#0f0c1b" />
+      <stop offset="100%" stop-color="#07060a" />
+    </radialGradient>
+
+    <!-- Outer Rim Glow -->
+    <linearGradient id="rimGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#38bdf8" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#ec4899" stop-opacity="0.8" />
+    </linearGradient>
+
+    <!-- Left Wing (Cyan to Electric Violet) -->
+    <linearGradient id="leftWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="40%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+
+    <!-- Right Wing (Electric Violet to Hot Magenta) -->
+    <linearGradient id="rightWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="60%" stop-color="#ec4899" />
       <stop offset="100%" stop-color="#f43f5e" />
     </linearGradient>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#181824" />
-      <stop offset="100%" stop-color="#0b0b10" />
+
+    <!-- Center Gem / Chevron (Laser White to Neon Violet) -->
+    <linearGradient id="coreGrad" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="35%" stop-color="#e0e7ff" />
+      <stop offset="100%" stop-color="#a855f7" />
     </linearGradient>
-    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="16" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+
+    <!-- Ambient Core Glow Filter -->
+    <filter id="ambientGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="22" result="blur1" />
+      <feGaussianBlur stdDeviation="10" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
     </filter>
   </defs>
+
+  <!-- Base Badge with Precision Bevel Rim -->
+  <rect x="16" y="16" width="480" height="480" rx="120" fill="url(#vexBg)" stroke="url(#rimGrad)" stroke-width="6" />
   
-  <!-- Dark Rounded Modern Base -->
-  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.12)" stroke-width="8" />
-  
-  <!-- Sleek Angular "V" Shape with Cyber-Cut Aesthetic -->
-  <g filter="url(#glow)">
-    <path d="M120 130 L220 130 L256 260 L292 130 L392 130 L296 382 C280 422 232 422 216 382 Z" fill="url(#vexGrad)" />
-    <!-- Modern Speed-Cut Inner Geometric Notch -->
-    <path d="M256 310 L280 180 L232 180 Z" fill="#0b0b10" opacity="0.9" />
+  <!-- Subtle Internal Grid Horizon (Cyber-chic) -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="rgba(168, 85, 247, 0.08)" stroke-width="1.5" />
+  <circle cx="256" cy="256" r="110" fill="none" stroke="rgba(56, 189, 248, 0.06)" stroke-width="1.5" />
+
+  <!-- The "V" Emblem -->
+  <g filter="url(#ambientGlow)">
+    <!-- Left Dynamic Blade -->
+    <path
+      d="M108 128 L196 128 L256 312 L208 340 L108 128 Z"
+      fill="url(#leftWingGrad)"
+    />
+
+    <!-- Right Dynamic Blade -->
+    <path
+      d="M404 128 L316 128 L256 312 L304 340 L404 128 Z"
+      fill="url(#rightWingGrad)"
+    />
+
+    <!-- Center Apex Shard (Keystone Anchor) -->
+    <path
+      d="M256 168 L286 244 L256 394 L226 244 Z"
+      fill="url(#coreGrad)"
+    />
+
+    <!-- Bottom Energy Pivot Point -->
+    <polygon
+      points="256,410 274,380 238,380"
+      fill="#ffffff"
+      opacity="0.9"
+    />
   </g>
 </svg>

@@ -50,19 +50,24 @@ export default function Navbar() {
                 justifyContent: 'center',
                 boxShadow: '0 2px 10px rgba(139,92,246,0.2)'
               }}>
-                <svg width="20" height="20" viewBox="0 0 512 512" fill="none">
-                  <path
-                    d="M120 130 L220 130 L256 260 L292 130 L392 130 L296 382 C280 422 232 422 216 382 Z"
-                    fill="url(#navVexGrad)"
-                  />
-                  <path d="M256 310 L280 180 L232 180 Z" fill="#0b0b10" opacity="0.9" />
+                <svg width="22" height="22" viewBox="0 0 512 512" fill="none">
                   <defs>
-                    <linearGradient id="navVexGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#8b5cf6" />
-                      <stop offset="50%" stopColor="#ec4899" />
-                      <stop offset="100%" stopColor="#f43f5e" />
+                    <linearGradient id="navIcoLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#38bdf8" />
+                      <stop offset="100%" stopColor="#6366f1" />
+                    </linearGradient>
+                    <linearGradient id="navIcoRight" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#c084fc" />
+                      <stop offset="100%" stopColor="#ec4899" />
+                    </linearGradient>
+                    <linearGradient id="navIcoCore" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" />
+                      <stop offset="100%" stopColor="#a855f7" />
                     </linearGradient>
                   </defs>
+                  <path d="M108 128 L196 128 L256 312 L208 340 L108 128 Z" fill="url(#navIcoLeft)" />
+                  <path d="M404 128 L316 128 L256 312 L304 340 L404 128 Z" fill="url(#navIcoRight)" />
+                  <path d="M256 168 L286 244 L256 394 L226 244 Z" fill="url(#navIcoCore)" />
                 </svg>
               </div>
               <span style={{ fontWeight: 900, background: 'linear-gradient(135deg, #fff 40%, #c4b5fd 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>

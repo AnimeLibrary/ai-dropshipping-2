@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   if (unauthorized) return unauthorized
 
   try {
-    const { pid, niche = 'general', markupFactor = 2.5 } = await req.json()
+    const { pid, niche = 'general', markupFactor = 2.5, retailPrice, compareAtPrice, title } = await req.json()
 
     if (!pid) {
       return NextResponse.json({ error: 'Missing CJ product ID (pid)' }, { status: 400 })
@@ -23,7 +23,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const product = await cj.importProduct(pid, niche, markupFactor)
+    const product = await cj.importProduct(
+      pid,
+      niche,
+      markupFactor,
+      retailPrice ? parseFloat(retailPrice) : undefined,
+      compareAtPrice ? parseFloat(compareAtPrice) : undefined,
+      title
+    )
 
     await prisma.systemLog.create({
       data: {
