@@ -53,7 +53,7 @@ export default async function AdminPage() {
     }),
     prisma.keywordCluster.findMany({
       orderBy: { searchVolume: 'desc' },
-      select: { id:true, keyword:true, searchVolume:true, intent:true, targetPageType:true, aiContent:true, products: { select: { id:true } }, createdAt:true }
+      select: { id:true, keyword:true, targetSlug:true, searchVolume:true, intent:true, targetPageType:true, aiContent:true, products: { select: { id:true } }, createdAt:true }
     })
   ])
 
@@ -109,6 +109,7 @@ export default async function AdminPage() {
 
   const seoClusters = rawSeoClusters.map(c => ({
     ...c,
+    targetSlug: c.targetSlug,
     hasContent: !!c.aiContent,
     productCount: c.products.length,
     createdAt: c.createdAt.toISOString()

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
 import HeroSection from '@/components/home/HeroSection'
-import TrustMatrix from '@/components/home/TrustMatrix'
 import TrendingProducts from '@/components/home/TrendingProducts'
 import EmailCapture from '@/components/home/EmailCapture'
 
@@ -46,10 +45,7 @@ export default async function HomePage() {
       {/* 1. HERO - sharp, visual, one CTA */}
       <HeroSection featuredProducts={trendingProducts.slice(0, 3)} />
 
-      {/* 2. TRUST MATRIX - guarantee, shipping, 256-bit encryption */}
-      <TrustMatrix productCount={trendingProducts.length} />
-
-      {/* 3. PRODUCTS - first thing to buy */}
+      {/* 2. PRODUCTS - first thing to buy */}
       <section className="section" id="trending-products">
         <div className="container">
           <TrendingProducts products={trendingProducts as any} />
