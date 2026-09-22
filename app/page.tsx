@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
-import HeroSection from '@/components/home/HeroSection'
-import TrendingProducts from '@/components/home/TrendingProducts'
-import EmailCapture from '@/components/home/EmailCapture'
+import { getLandingMedia } from '@/lib/landing-media'
+import LandingPageClient from '@/components/home/LandingPageClient'
 
 export const metadata: Metadata = {
   title: 'Vexsen® Official Store — Waterproof Lip Stains & Juicy Lip Oils',
@@ -16,18 +15,21 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
-  const approvedProducts = await prisma.product.findMany({
-    where: { validationStatus: 'approved' },
-    orderBy: { trendScore: 'desc' },
-    take: 12,
-    select: {
-      id: true, slug: true, title: true, niche: true, price: true,
-      compareAtPrice: true, heroImage: true, trendScore: true,
-    }
-  }).catch((error) => {
-    console.error('[home] products unavailable', error)
-    return []
-  })
+  const [approvedProducts, landingMedia] = await Promise.all([
+    prisma.product.findMany({
+      where: { validationStatus: 'approved' },
+      orderBy: { trendScore: 'desc' },
+      take: 12,
+      select: {
+        id: true, slug: true, title: true, niche: true, price: true,
+        compareAtPrice: true, heroImage: true, trendScore: true,
+      }
+    }).catch((error) => {
+      console.error('[home] products unavailable', error)
+      return []
+    }),
+    getLandingMedia(),
+  ])
 
   const trendingProducts = (approvedProducts || []).map(p => {
     const price = Number(p.price || 0)
@@ -41,24 +43,9 @@ export default async function HomePage() {
   })
 
   return (
-    <>
-      {/* 1. HERO - sharp, visual, one CTA */}
-      <HeroSection featuredProducts={trendingProducts.slice(0, 3)} />
-
-      {/* 2. PRODUCTS - first thing to buy */}
-      <section className="section" id="trending-products">
-        <div className="container">
-          <TrendingProducts products={trendingProducts as any} />
-        </div>
-      </section>
-
-      {/* 4. EMAIL CAPTURE - 10% off for subscriber list */}
-      <div className="divider" style={{ maxWidth: 'var(--max-width)', margin: '0 auto' }} />
-      <section className="section-sm" id="email-capture">
-        <div className="container">
-          <EmailCapture />
-        </div>
-      </section>
-    </>
+    <LandingPageClient
+      initialMedia={landingMedia}
+      trendingProducts={trendingProducts}
+    />
   )
 }

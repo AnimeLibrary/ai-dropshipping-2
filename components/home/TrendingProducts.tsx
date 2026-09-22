@@ -30,13 +30,13 @@ export default function TrendingProducts({ products }: Props) {
       >
         <div>
           <span className="badge badge-glow" style={{ marginBottom: 'var(--space-3)' }}>
-            Verified storefront picks
+            Viral Beauty Upgrades
           </span>
           <h2 className="heading-xl">
-            Live Products <span className="gradient-text">Ready To Buy</span>
+            Trending Lip Care <span className="gradient-text">&amp; Longwear Tints</span>
           </h2>
           <p style={{ color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)', marginTop: 6 }}>
-            Real approved listings only. No dead-end placeholder products.
+            24-hour waterproof stains, plumping juicy oils, and transfer-proof tints designed for effortless everyday wear.
           </p>
         </div>
         <Link href="/collections" className="btn btn-secondary hide-mobile" id="trending-view-all">

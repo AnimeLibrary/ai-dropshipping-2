@@ -538,6 +538,50 @@ export default function ProductBuyBox({ product, variants }: Props) {
                 ✓ Inspected & Tracked Delivery (7–12 Business Days)
               </span>
             </div>
+
+            {/* Complete The Look / Beauty Pair Tip */}
+            {product.slug.includes('peeling') && (
+              <div style={{
+                marginBottom: 'var(--space-3)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(236, 72, 153, 0.08)',
+                border: '1px solid rgba(236, 72, 153, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>✨</span>
+                  <div>
+                    <p style={{ fontSize: '12px', fontWeight: 800, color: 'var(--color-text-primary)', margin: 0 }}>
+                      Pro Tip: Pair with Juicy Lip Oil
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'var(--color-text-secondary)', margin: '1px 0 0' }}>
+                      Layer over your peel-off stain for a Korean glass-shine finish without sticky transfer.
+                    </p>
+                  </div>
+                </div>
+                <a
+                  href="/products/phofay-juicy-lip-oil-1ji0"
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    color: '#ec4899',
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    background: 'rgba(236, 72, 153, 0.12)',
+                    border: '1px solid rgba(236, 72, 153, 0.3)',
+                  }}
+                >
+                  View Oil &rarr;
+                </a>
+              </div>
+            )}
+
             <CheckoutButton
               productId={product.id}
               title={`${product.title}${selectedVariant && !selectedVariant.isDefault ? ` — ${selectedVariant.label}` : ''}`}

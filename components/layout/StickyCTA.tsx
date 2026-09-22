@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { trackEvent } from './Analytics'
 
 const STICKY_MESSAGES = [
@@ -11,6 +12,7 @@ const STICKY_MESSAGES = [
 ]
 
 export default function StickyCTA() {
+  const pathname = usePathname()
   const [visible, setVisible] = useState(false)
   const [msgIndex, setMsgIndex] = useState(0)
 
@@ -28,6 +30,15 @@ export default function StickyCTA() {
     }, 6000)
     return () => clearInterval(interval)
   }, [visible])
+
+  // Don't clutter product detail pages, checkout, or admin with sticky banner
+  if (
+    pathname?.startsWith('/products/') ||
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/checkout')
+  ) {
+    return null
+  }
 
   return (
     <div

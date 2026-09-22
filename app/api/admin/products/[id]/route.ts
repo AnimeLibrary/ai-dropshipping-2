@@ -12,6 +12,7 @@ export async function PATCH(
 
   try {
     const { id } = await params
+    const body = await req.json()
     const { title, price, compareAtPrice, niche, shortDescription, longDescription, validationStatus, heroImage } = body
 
     const numPrice = price !== undefined ? parseFloat(price) : undefined

@@ -146,7 +146,13 @@ export default function ProductCard({ product, index = 0 }: Props) {
           textTransform: 'uppercase', letterSpacing: 0,
           fontWeight: 700, marginBottom: 4
         }}>
-          {(product.category || product.niche).replace(/-/g, ' ')}
+          {(() => {
+            const raw = product.niche || product.category || 'Beauty & Lip Care'
+            if (raw.includes('>') || raw.includes('Home') || raw.includes('Office')) {
+              return 'Beauty & Lip Care'
+            }
+            return raw.replace(/-/g, ' ')
+          })()}
         </p>
 
         {/* Title */}

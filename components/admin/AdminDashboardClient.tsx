@@ -713,6 +713,28 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
               {n.badge ? <span style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:999, fontSize:10, padding:'0 6px', fontWeight:800 }}>{n.badge}</span> : null}
             </button>
           ))}
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              marginTop: 'auto',
+              padding: '9px 12px',
+              borderRadius: 8,
+              background: 'rgba(124, 58, 237, 0.15)',
+              border: '1px solid rgba(124, 58, 237, 0.35)',
+              color: '#a78bfa',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+          >
+            <span>⚡ Quick Edit Landing</span>
+            <span>↗</span>
+          </a>
         </div>
       </div>
 
