@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'About Vexsen — Why We Built This',
+  title: 'About Vexsen — Quality Standards & Guarantees',
   description:
-    'We got tired of buying internet products that broke in a week or never delivered. So we built Vexsen — a strict curation brand that only puts the 1% through.',
+    'Discover why Vexsen was founded: high-performance beauty and everyday essentials rigorously tested for real durability and longwear performance. 30-day risk-free trial.',
 }
 
 export default function AboutPage() {

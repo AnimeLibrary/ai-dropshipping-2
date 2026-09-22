@@ -1,4 +1,4 @@
-const DEFAULT_SITE_URL = 'https://vexsen.store'
+const DEFAULT_SITE_URL = 'https://vexsen.com'
 
 function normalizeSiteUrl(value?: string) {
   try {
@@ -13,10 +13,10 @@ function normalizeSiteUrl(value?: string) {
 export const siteUrl = normalizeSiteUrl(process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_URL)
 
 export const siteConfig = {
-  name: 'Vexsen',
+  name: 'Vexsen® Official Store',
   url: siteUrl,
   description:
-    'Functional design. Uncompromising quality. Vexsen curates verified solutions for everyday frustrations.',
+    'Shop the official Vexsen store. Discover 24H waterproof peel-off lip stains, hydrating juicy lip oils, and transfer-proof beauty care. Fast insured shipping & 30-day guarantee.',
 }
 
 export function absoluteUrl(path = '/') {

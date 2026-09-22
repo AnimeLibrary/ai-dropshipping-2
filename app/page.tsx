@@ -5,11 +5,11 @@ import TrendingProducts from '@/components/home/TrendingProducts'
 import EmailCapture from '@/components/home/EmailCapture'
 
 export const metadata: Metadata = {
-  title: 'Vexsen - Curated High-Performance Solutions',
+  title: 'Vexsen® Official Store — Waterproof Lip Stains & Juicy Lip Oils',
   description:
-    'Vexsen curates proven, high-performance ergonomic and lifestyle solutions engineered for daily life. Fast shipping, 30-day risk-free guarantee.',
+    'Shop the official Vexsen store. Discover viral 24H waterproof peel-off lip stains, hydrating juicy lip oils, and transfer-proof beauty care. Fast insured shipping & 30-day risk-free guarantee.',
   alternates: {
-    canonical: '/',
+    canonical: 'https://vexsen.com',
   },
 }
 

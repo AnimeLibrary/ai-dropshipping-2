@@ -1,8 +1,8 @@
 import { ImageResponse } from 'next/og'
 
 export const size = {
-  width: 32,
-  height: 32,
+  width: 96,
+  height: 96,
 }
 export const contentType = 'image/png'
 
@@ -17,11 +17,11 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: 8,
-          border: '1px solid rgba(168, 85, 247, 0.5)',
+          borderRadius: 20,
+          border: '2px solid rgba(168, 85, 247, 0.6)',
         }}
       >
-        <svg width="22" height="22" viewBox="0 0 512 512" fill="none">
+        <svg width="64" height="64" viewBox="0 0 512 512" fill="none">
           <defs>
             <linearGradient id="icoLeft" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#38bdf8" />

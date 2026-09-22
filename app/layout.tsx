@@ -16,27 +16,36 @@ import { siteConfig } from '@/lib/config/site'
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: 'Vexsen - Curated for Everyday Life',
-    template: '%s | Vexsen',
+    default: 'Vexsen® Official Store — Waterproof Lip Stains & Juicy Lip Oils',
+    template: '%s | Vexsen® Official Store',
   },
   description: siteConfig.description,
-  keywords: ['premium products', 'vexsen', 'lifestyle solutions', 'quality goods'],
+  keywords: [
+    'vexsen',
+    'vexsen official store',
+    'vexsen lip stain',
+    'vexsen lip oil',
+    'peel off lip stain',
+    'waterproof lip stain 24h',
+    'juicy lip oil',
+    'transfer proof lip tint'
+  ],
   icons: {
     icon: [
+      { url: '/icon', sizes: '96x96', type: 'image/png' },
       { url: '/icon.svg', type: 'image/svg+xml' },
-      { url: '/icon', sizes: '32x32', type: 'image/png' },
       { url: '/favicon.ico', sizes: 'any' },
     ],
     apple: [
       { url: '/apple-icon', sizes: '180x180', type: 'image/png' },
       { url: '/icon.svg', type: 'image/svg+xml' },
     ],
-    shortcut: ['/icon.svg'],
+    shortcut: ['/icon'],
   },
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    siteName: 'Vexsen',
+    siteName: 'Vexsen Official Store',
     url: siteConfig.url,
     images: [
       {
@@ -63,13 +72,39 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const orgSchema = {
+  const storeSchema = {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'Vexsen',
-    url: siteConfig.url,
-    logo: `${siteConfig.url}/icon.svg`,
-    image: `${siteConfig.url}/icon.svg`,
+    '@graph': [
+      {
+        '@type': 'OnlineStore',
+        '@id': `${siteConfig.url}/#store`,
+        name: 'Vexsen',
+        alternateName: ['Vexsen Official Store', 'Vexsen Beauty', 'vexsen.com'],
+        url: siteConfig.url,
+        logo: `${siteConfig.url}/icon.svg`,
+        image: `${siteConfig.url}/icon.svg`,
+        description: siteConfig.description,
+        priceRange: '$$',
+        currenciesAccepted: 'USD',
+        paymentAccepted: 'Credit Card, Apple Pay, Google Pay',
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteConfig.url}/#website`,
+        url: siteConfig.url,
+        name: 'Vexsen',
+        alternateName: 'Vexsen Store',
+        publisher: { '@id': `${siteConfig.url}/#store` },
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: {
+            '@type': 'EntryPoint',
+            urlTemplate: `${siteConfig.url}/search?q={search_term_string}`,
+          },
+          'query-input': 'required name=search_term_string',
+        },
+      },
+    ],
   }
 
   return (
@@ -77,12 +112,13 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <link rel="icon" type="image/png" sizes="96x96" href="/icon" />
           <link rel="icon" type="image/svg+xml" href="/icon.svg" />
           <link rel="alternate icon" href="/favicon.ico" />
           <link rel="apple-touch-icon" href="/apple-icon" />
           <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(storeSchema) }}
           />
         </head>
         <body>
