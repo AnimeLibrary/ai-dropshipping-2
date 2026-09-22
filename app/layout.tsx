@@ -32,15 +32,16 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: [
-      { url: '/icon', sizes: '96x96', type: 'image/png' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon.svg', type: 'image/svg+xml' },
     ],
     apple: [
-      { url: '/apple-icon', sizes: '180x180', type: 'image/png' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
-    shortcut: ['/icon'],
+    shortcut: ['/favicon.ico'],
   },
   openGraph: {
     type: 'website',
@@ -112,10 +113,12 @@ export default function RootLayout({
       <html lang="en" suppressHydrationWarning>
         <head>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
-          <link rel="icon" type="image/png" sizes="96x96" href="/icon" />
+          <link rel="icon" href="/favicon.ico" sizes="any" />
+          <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+          <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+          <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
           <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-          <link rel="alternate icon" href="/favicon.ico" />
-          <link rel="apple-touch-icon" href="/apple-icon" />
+          <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
           <script
             type="application/ld+json"
             dangerouslySetInnerHTML={{ __html: JSON.stringify(storeSchema) }}
