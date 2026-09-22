@@ -1971,6 +1971,55 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
               </div>
             </div>
 
+            {/* Real-time Search Engine Dispatch Station */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.18) 0%, rgba(59, 130, 246, 0.12) 100%)',
+              border: '1px solid rgba(139, 92, 246, 0.5)',
+              borderRadius: 12,
+              padding: '18px 22px',
+              marginBottom: 20,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: 16
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 18 }}>📡</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: '#c084fc' }}>
+                    Instant Search Engine Broadcast (IndexNow + Googlebot)
+                  </span>
+                  <Tag color="#22c55e">Protocol Ready</Tag>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', maxWidth: 650, lineHeight: 1.4 }}>
+                  Push all 55+ live product and guide URLs directly to Microsoft Bing, Yandex, Naver, and Google XML sitemaps. Bypasses multi-week crawler wait times.
+                </p>
+              </div>
+
+              <button
+                onClick={handlePingSearchEngines}
+                disabled={loadingId === 'ping-seo'}
+                style={{
+                  background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                  border: 'none',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '12px 24px',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 20px rgba(139, 92, 246, 0.4)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {loadingId === 'ping-seo' ? '⏳ Broadcasting to Spiders...' : '📡 PING SEARCH ENGINES NOW'}
+              </button>
+            </div>
+
             {/* Google SERP Live Simulator Card */}
             {seoClusterList.length > 0 && (
               <div style={{ ...card, background: '#0a0d14', borderColor: '#1e293b', marginBottom: 20, padding: 16 }}>
