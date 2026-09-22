@@ -71,12 +71,24 @@ export default function ProductBuyBox({ product, variants }: Props) {
   const [selectedSize, setSelectedSize] = useState<string | null>(defaultVariant?.size || null)
   const [quantity, setQuantity] = useState<number>(1)
 
-  // Admin price editing state
-  const [isEditingPrice, setIsEditingPrice] = useState(false)
+  // Admin editing state
+  const [adminTab, setAdminTab] = useState<'none' | 'price' | 'title' | 'desc'>('none')
+  
+  // Price
   const [inputPrice, setInputPrice] = useState(product.price.toString())
   const [savingPrice, setSavingPrice] = useState(false)
   const [basePrice, setBasePrice] = useState(product.price)
   const [baseCompareAt, setBaseCompareAt] = useState(product.compareAtPrice)
+
+  // Title
+  const [currentTitle, setCurrentTitle] = useState(product.title)
+  const [inputTitle, setInputTitle] = useState(product.title)
+  const [savingTitle, setSavingTitle] = useState(false)
+
+  // Description
+  const [currentDesc, setCurrentDesc] = useState(product.shortDescription || '')
+  const [inputDesc, setInputDesc] = useState(product.shortDescription || '')
+  const [savingDesc, setSavingDesc] = useState(false)
 
   const hasVariants = localVariants.length > 1
   const colors = uniqueColors(localVariants)
@@ -119,16 +131,56 @@ export default function ProductBuyBox({ product, variants }: Props) {
       if (!res.ok) throw new Error(data.error || 'Failed to update price')
       setBasePrice(val)
       setBaseCompareAt(newCompare)
-      // Update all variants to match the new retail price
       setLocalVariants(prev => prev.map(v => ({ ...v, retailPrice: val })))
       if (selectedVariant) {
         setSelectedVariant({ ...selectedVariant, retailPrice: val })
       }
-      setIsEditingPrice(false)
+      setAdminTab('none')
     } catch (err: any) {
       alert(err.message || 'Error updating price')
     } finally {
       setSavingPrice(false)
+    }
+  }
+
+  const handleAdminTitleSave = async () => {
+    const trimmed = inputTitle.trim()
+    if (!trimmed) return alert('Title cannot be empty.')
+    setSavingTitle(true)
+    try {
+      const res = await fetch(`/api/admin/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: trimmed })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update title')
+      setCurrentTitle(trimmed)
+      setAdminTab('none')
+    } catch (err: any) {
+      alert(err.message || 'Error updating title')
+    } finally {
+      setSavingTitle(false)
+    }
+  }
+
+  const handleAdminDescSave = async () => {
+    const trimmed = inputDesc.trim()
+    setSavingDesc(true)
+    try {
+      const res = await fetch(`/api/admin/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shortDescription: trimmed })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update description')
+      setCurrentDesc(trimmed)
+      setAdminTab('none')
+    } catch (err: any) {
+      alert(err.message || 'Error updating description')
+    } finally {
+      setSavingDesc(false)
     }
   }
 
@@ -152,47 +204,154 @@ export default function ProductBuyBox({ product, variants }: Props) {
     <>
       {/* ── Image column ── */}
       <div style={{ transition: 'opacity 0.2s ease' }}>
-        <ProductGallery images={gallery.length > 0 ? gallery : [product.heroImage]} title={product.title} />
+        <ProductGallery images={gallery.length > 0 ? gallery : [product.heroImage]} title={currentTitle} />
       </div>
 
       {/* ── Buy column ── */}
       <div>
-        {/* Admin Quick-Price Bar */}
+        {/* Admin Quick Editor Suite */}
         {isAdmin && (
-          <div style={{ background: '#11111a', border: '1px solid #7c3aed44', borderRadius: 8, padding: '7px 12px', marginBottom: 12, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              🛡️ Admin Pricing
-            </span>
-            {!isEditingPrice ? (
-              <button
-                onClick={() => setIsEditingPrice(true)}
-                style={{ background: '#7c3aed22', border: '1px solid #7c3aed66', color: '#c4b5fd', borderRadius: 5, padding: '3px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
-              >
-                ✏️ Change Price Directly
-              </button>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12, color: '#94a3b8' }}>$</span>
+          <div style={{
+            background: '#12121e',
+            border: '1px solid #7c3aed66',
+            borderRadius: 10,
+            padding: '10px 14px',
+            marginBottom: 16,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: adminTab !== 'none' ? 10 : 0 }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'flex', alignItems: 'center', gap: 5 }}>
+                🛡️ Admin Quick-Edit
+              </span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setAdminTab(adminTab === 'price' ? 'none' : 'price')}
+                  style={{
+                    background: adminTab === 'price' ? '#7c3aed' : '#7c3aed22',
+                    border: '1px solid #7c3aed66',
+                    color: adminTab === 'price' ? '#fff' : '#c4b5fd',
+                    borderRadius: 5,
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  💵 Price (${activePrice.toFixed(2)})
+                </button>
+                <button
+                  onClick={() => setAdminTab(adminTab === 'title' ? 'none' : 'title')}
+                  style={{
+                    background: adminTab === 'title' ? '#7c3aed' : '#7c3aed22',
+                    border: '1px solid #7c3aed66',
+                    color: adminTab === 'title' ? '#fff' : '#c4b5fd',
+                    borderRadius: 5,
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  📝 Title
+                </button>
+                <button
+                  onClick={() => setAdminTab(adminTab === 'desc' ? 'none' : 'desc')}
+                  style={{
+                    background: adminTab === 'desc' ? '#7c3aed' : '#7c3aed22',
+                    border: '1px solid #7c3aed66',
+                    color: adminTab === 'desc' ? '#fff' : '#c4b5fd',
+                    borderRadius: 5,
+                    padding: '4px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  📄 Description
+                </button>
+              </div>
+            </div>
+
+            {/* Price Tab Form */}
+            {adminTab === 'price' && (
+              <div style={{ paddingTop: 8, borderTop: '1px solid #7c3aed33', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>Retail Price: $</span>
                 <input
                   type="number"
                   step="0.01"
                   value={inputPrice}
                   onChange={e => setInputPrice(e.target.value)}
-                  style={{ width: 80, background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 4, padding: '3px 8px', fontSize: 12, fontWeight: 700, outline: 'none' }}
+                  style={{ width: 90, background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 4, padding: '4px 8px', fontSize: 13, fontWeight: 700, outline: 'none' }}
                 />
                 <button
                   onClick={handleAdminPriceSave}
                   disabled={savingPrice}
-                  style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                  style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 4, padding: '5px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
                 >
-                  {savingPrice ? '…' : 'Save'}
+                  {savingPrice ? 'Saving…' : 'Save Price'}
                 </button>
                 <button
-                  onClick={() => setIsEditingPrice(false)}
-                  style={{ background: 'transparent', border: '1px solid #4a4a6a', color: '#94a3b8', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}
+                  onClick={() => setAdminTab('none')}
+                  style={{ background: 'transparent', border: '1px solid #4a4a6a', color: '#94a3b8', borderRadius: 4, padding: '5px 8px', fontSize: 11, cursor: 'pointer' }}
                 >
-                  ✕
+                  Cancel
                 </button>
+              </div>
+            )}
+
+            {/* Title Tab Form */}
+            {adminTab === 'title' && (
+              <div style={{ paddingTop: 8, borderTop: '1px solid #7c3aed33', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Product Title:</label>
+                <input
+                  type="text"
+                  value={inputTitle}
+                  onChange={e => setInputTitle(e.target.value)}
+                  style={{ width: '100%', background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 6, padding: '6px 10px', fontSize: 13, fontWeight: 600, outline: 'none' }}
+                />
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setAdminTab('none')}
+                    style={{ background: 'transparent', border: '1px solid #4a4a6a', color: '#94a3b8', borderRadius: 4, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAdminTitleSave}
+                    disabled={savingTitle}
+                    style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 4, padding: '5px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {savingTitle ? 'Saving…' : 'Save Title'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Description Tab Form */}
+            {adminTab === 'desc' && (
+              <div style={{ paddingTop: 8, borderTop: '1px solid #7c3aed33', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <label style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>Product Description / Blurb:</label>
+                <textarea
+                  rows={3}
+                  value={inputDesc}
+                  onChange={e => setInputDesc(e.target.value)}
+                  style={{ width: '100%', background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 6, padding: '8px 10px', fontSize: 13, lineHeight: 1.4, outline: 'none', resize: 'vertical' }}
+                />
+                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setAdminTab('none')}
+                    style={{ background: 'transparent', border: '1px solid #4a4a6a', color: '#94a3b8', borderRadius: 4, padding: '5px 10px', fontSize: 11, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAdminDescSave}
+                    disabled={savingDesc}
+                    style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 4, padding: '5px 14px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    {savingDesc ? 'Saving…' : 'Save Description'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -202,8 +361,14 @@ export default function ProductBuyBox({ product, variants }: Props) {
           Verified Product →
         </p>
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: 'var(--space-3)', letterSpacing: '-0.02em' }}>
-          {product.title}
+          {currentTitle}
         </h2>
+
+        {currentDesc && (
+          <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.6, marginBottom: 'var(--space-4)' }}>
+            {currentDesc}
+          </p>
+        )}
 
         {/* Price */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', marginBottom: 'var(--space-5)' }}>
