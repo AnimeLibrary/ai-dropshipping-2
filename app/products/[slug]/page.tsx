@@ -141,64 +141,8 @@ export default async function ProductPage({ params }: Props) {
       </nav>
 
       <main id="main-content">
-        {/* ── STAGE 1: Pain acknowledgment ── */}
-        <section
-          style={{
-            background: 'linear-gradient(180deg, var(--color-bg-secondary) 0%, var(--color-bg) 100%)',
-            borderBottom: '1px solid var(--color-border)',
-            padding: 'var(--space-16) 0',
-          }}
-        >
-          <div className="container" style={{ maxWidth: 760 }}>
-            <div style={{ marginBottom: 'var(--space-6)' }}>
-              <span className="badge badge-neutral" style={{ marginBottom: 'var(--space-4)', textTransform: 'capitalize' }}>
-                {product.niche.replace(/-/g, ' ')}
-              </span>
-              <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(1.75rem, 4vw, 2.5rem)', fontWeight: 800, lineHeight: 1.15, color: 'var(--color-text-primary)', marginBottom: 'var(--space-6)', letterSpacing: '-0.02em' }}>
-                {product.painNarrative.whyYoureHere}
-              </h1>
-              <p style={{ fontSize: 'var(--text-lg)', color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>
-                {product.painNarrative.realCause}
-              </p>
-            </div>
-
-            <div style={{ display: 'inline-flex', alignItems: 'center', background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 'var(--radius-full)', padding: 'var(--space-2) var(--space-4)' }}>
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-accent)', fontWeight: 600 }}>
-                You're not alone in feeling: {product.emotionalTrigger}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* ── WHY THIS EXISTS ── */}
-        <section style={{ padding: 'var(--space-12) 0', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-          <div className="container" style={{ maxWidth: 760 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
-
-              {/* 01 — The Problem */}
-              <div style={{ padding: 'var(--space-5)', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
-                <p style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>01 — The Problem</p>
-                <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>{product.painNarrative.realCause}</p>
-              </div>
-
-              {/* 02 — Why Others Fail */}
-              <div style={{ padding: 'var(--space-5)', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', borderLeft: '3px solid #ef4444' }}>
-                <p style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>02 — Why Others Fail</p>
-                <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>{product.painNarrative.whyOthersFail}</p>
-              </div>
-
-              {/* 03 — Why This Works */}
-              <div style={{ padding: 'var(--space-5)', background: 'rgba(34,197,94,0.05)', borderRadius: 'var(--radius-lg)', border: '1px solid rgba(34,197,94,0.2)', borderLeft: '3px solid var(--color-success)' }}>
-                <p style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-3)' }}>03 — Why This Works</p>
-                <p style={{ fontSize: 'var(--text-base)', color: 'var(--color-text-secondary)', lineHeight: 1.7 }}>{product.painNarrative.whyThisWorks}</p>
-              </div>
-
-            </div>
-          </div>
-        </section>
-
-        {/* ── STAGE 2: Product + Solution ── */}
-        <section style={{ padding: 'var(--space-16) 0' }}>
+        {/* ── STAGE 1: Product Buy Box & Gallery (Top Priority) ── */}
+        <section style={{ padding: 'var(--space-8) 0 var(--space-12)' }}>
           <div className="container">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-12)', alignItems: 'start' }}>
               <ProductBuyBox
@@ -210,7 +154,7 @@ export default async function ProductPage({ params }: Props) {
                   heroImage: product.heroImage,
                   galleryImages: product.galleryImages,
                   stripePriceId: product.stripePriceId || null,
-                  shortDescription: product.painNarrative.whyThisWorks,
+                  shortDescription: rawProduct.shortDescription || safeDescription,
                   slug: product.slug,
                   niche: product.niche,
                 }}
@@ -227,6 +171,52 @@ export default async function ProductPage({ params }: Props) {
                   stripeVariantPriceId: v.stripeVariantPriceId || null,
                 }))}
               />
+            </div>
+          </div>
+        </section>
+
+        {/* ── STAGE 2: Highlights & Quality Standard ── */}
+        <section style={{ padding: 'var(--space-12) 0', background: 'var(--color-bg-secondary)', borderTop: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)' }}>
+          <div className="container" style={{ maxWidth: 860 }}>
+            <div style={{ textAlign: 'center', marginBottom: 'var(--space-8)' }}>
+              <span className="badge badge-neutral" style={{ marginBottom: 'var(--space-2)', textTransform: 'capitalize' }}>
+                {product.niche.replace(/-/g, ' ')}
+              </span>
+              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800, color: 'var(--color-text-primary)' }}>
+                Curated for Reliability & Daily Life
+              </h2>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-base)', maxWidth: 640, margin: 'var(--space-2) auto 0', lineHeight: 1.6 }}>
+                {rawProduct.shortDescription || 'Every item in the Vexsen catalog is tested for durability, quality construction, and real-world performance.'}
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-4)' }}>
+              <div style={{ padding: 'var(--space-5)', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-2)' }}>
+                  <span style={{ fontSize: '1.25rem' }}>✨</span>
+                  <p style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>01 — Quality First</p>
+                </div>
+                <h4 style={{ fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6, fontSize: '0.95rem' }}>Premium Construction</h4>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>Manufactured with selected, high-grade materials designed for long-lasting daily use and zero hassle.</p>
+              </div>
+
+              <div style={{ padding: 'var(--space-5)', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-2)' }}>
+                  <span style={{ fontSize: '1.25rem' }}>🔍</span>
+                  <p style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>02 — Verified Sourcing</p>
+                </div>
+                <h4 style={{ fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6, fontSize: '0.95rem' }}>Direct Supplier QC</h4>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>Sourced directly from verified manufacturers. No cheap counterfeit corner-cutting, no inflated distributor markups.</p>
+              </div>
+
+              <div style={{ padding: 'var(--space-5)', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-2)' }}>
+                  <span style={{ fontSize: '1.25rem' }}>🛡️</span>
+                  <p style={{ fontSize: 'var(--text-xs)', fontWeight: 800, color: 'var(--color-success)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>03 — Total Peace of Mind</p>
+                </div>
+                <h4 style={{ fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6, fontSize: '0.95rem' }}>30-Day Guarantee</h4>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>Tracked delivery, insured shipping, and a no-hassle 30-day money-back guarantee if you are not 100% satisfied.</p>
+              </div>
             </div>
           </div>
         </section>

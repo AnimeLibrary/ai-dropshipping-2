@@ -14,14 +14,23 @@ export async function PATCH(
     const { id } = await params
     const body = await req.json()
 
-    const { title, price, compareAtPrice, niche, shortDescription, validationStatus, heroImage, longDescription } = body
+    const numPrice = price !== undefined ? parseFloat(price) : undefined
+    const numCompareAt = compareAtPrice !== undefined ? (compareAtPrice ? parseFloat(compareAtPrice) : null) : undefined
+
+    if (numPrice !== undefined) {
+      // Keep all variants in sync with the new retail price so variants don't show cheap old prices
+      await prisma.productVariant.updateMany({
+        where: { productId: id },
+        data: { retailPrice: numPrice }
+      })
+    }
 
     const updated = await prisma.product.update({
       where: { id },
       data: {
         ...(title !== undefined && { title }),
-        ...(price !== undefined && { price: parseFloat(price) }),
-        ...(compareAtPrice !== undefined && { compareAtPrice: compareAtPrice ? parseFloat(compareAtPrice) : null }),
+        ...(numPrice !== undefined && { price: numPrice }),
+        ...(numCompareAt !== undefined && { compareAtPrice: numCompareAt }),
         ...(niche !== undefined && { niche }),
         ...(shortDescription !== undefined && { shortDescription }),
         ...(validationStatus !== undefined && { validationStatus }),

@@ -230,13 +230,20 @@ export class CJService {
       ? customCompareAtPrice
       : Math.round(retailPrice * 1.4 * 100) / 100
 
+    // Sanitize niche: never store raw SKUs, PIDs, or URLs as the product's niche
+    let cleanNiche = (niche || '').trim()
+    const isSkuOrPid = /^CJ[A-Z0-9_-]+$/i.test(cleanNiche) || /^\d+$/.test(cleanNiche) || cleanNiche.includes('http') || cleanNiche === 'general'
+    if (!cleanNiche || isSkuOrPid) {
+      cleanNiche = full.categoryName || 'Curated Essentials'
+    }
+
     const created = await prisma.product.create({
       data: {
         slug,
         title: titleToUse,
-        shortDescription: `Premium engineered ${niche.replace(/-/g, ' ')} solution. Built for daily comfort, superior durability, and proven results.`,
+        shortDescription: `${titleToUse} — curated for reliable daily performance, quality materials, and verified durability.`,
         category: full.categoryName || 'General',
-        niche,
+        niche: cleanNiche,
         price: retailPrice,
         compareAtPrice,
         supplierPrice: full.supplierPrice,
@@ -330,11 +337,21 @@ export class CJService {
       shippingCustomerName: params.customerName,
       shippingPhone: params.customerPhone,
       products: params.products.map(p => ({ vid: p.vid, quantity: p.quantity, price: p.price })),
-      shippingService: 'CJPacket Ordinary',
+      shippingService: (params as any).shippingService || 'CJPacket Sensitive Pro',
       remark: `Vexsen Order #${params.orderId}`
     }
     const data = await this.request('/shopping/order/createOrderByProduct', 'POST', payload)
-    if (data.code !== 200) throw new Error(`CJ Order failed: ${data.message}`)
+    if (data.code !== 200) {
+      // Fallback to Ordinary if Sensitive Pro isn't applicable
+      if (payload.shippingService !== 'CJPacket Ordinary') {
+        payload.shippingService = 'CJPacket Ordinary'
+        const retry = await this.request('/shopping/order/createOrderByProduct', 'POST', payload)
+        if (retry.code === 200) {
+          return { success: true, cjOrderId: retry.data?.orderId, orderNum: retry.data?.orderNum }
+        }
+      }
+      throw new Error(`CJ Order failed: ${data.message}`)
+    }
     return { success: true, cjOrderId: data.data?.orderId, orderNum: data.data?.orderNum }
   }
 
@@ -351,11 +368,14 @@ export class CJService {
   }
 
   // ─── SHIPPING ────────────────────────────────────────────────
-  async getShippingOptions(pid: string, country: string) {
-    const data = await this.request(
-      `/logistic/freightCalculate?startCountryCode=CN&endCountryCode=${country}&quantity=1&pid=${pid}`
-    )
-    return data.data || []
+  async getShippingOptions(vid: string, country: string = 'US', quantity: number = 1) {
+    const payload = {
+      startCountryCode: 'CN',
+      endCountryCode: country,
+      products: [{ vid, quantity }]
+    }
+    const data = await this.request('/logistic/freightCalculate', 'POST', payload)
+    return data?.data || []
   }
 
   isConfigured() {

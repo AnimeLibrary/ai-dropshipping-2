@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     const activePrice = selectedVariant ? Number(selectedVariant.retailPrice) : Number(product.price)
     const cost = Number(selectedVariant?.supplierPrice || product.supplierPrice || 0)
 
-    if (!activePrice || activePrice < 10) {
+    if (!activePrice || activePrice < 1) {
       return NextResponse.json({ error: 'Invalid pricing model' }, { status: 400 })
     }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { useUser } from '@clerk/nextjs'
 import CheckoutButton from '@/components/commerce/CheckoutButton'
 import ProductGallery from '@/components/commerce/ProductGallery'
 
@@ -58,25 +59,37 @@ function getSwatchColor(colorName: string): string {
 }
 
 export default function ProductBuyBox({ product, variants }: Props) {
-  const defaultVariant = variants.find(v => v.isDefault) || variants[0] || null
+  const { user, isLoaded } = useUser()
+  const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase()
+  const isAdmin = isLoaded && (userEmail === 'brannenguidry28@gmail.com' || (user?.publicMetadata as any)?.role === 'admin')
+
+  const [localVariants, setLocalVariants] = useState<Variant[]>(variants)
+  const defaultVariant = localVariants.find(v => v.isDefault) || localVariants[0] || null
 
   const [selectedVariant, setSelectedVariant] = useState<Variant | null>(defaultVariant)
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultVariant?.color || null)
   const [selectedSize, setSelectedSize] = useState<string | null>(defaultVariant?.size || null)
   const [quantity, setQuantity] = useState<number>(1)
 
-  const hasVariants = variants.length > 1
-  const colors = uniqueColors(variants)
-  const sizes = uniqueSizes(variants)
+  // Admin price editing state
+  const [isEditingPrice, setIsEditingPrice] = useState(false)
+  const [inputPrice, setInputPrice] = useState(product.price.toString())
+  const [savingPrice, setSavingPrice] = useState(false)
+  const [basePrice, setBasePrice] = useState(product.price)
+  const [baseCompareAt, setBaseCompareAt] = useState(product.compareAtPrice)
+
+  const hasVariants = localVariants.length > 1
+  const colors = uniqueColors(localVariants)
+  const sizes = uniqueSizes(localVariants)
 
   // When color or size selection changes, find the matching variant
   const selectVariant = useCallback((color: string | null, size: string | null) => {
-    const match = variants.find(v =>
+    const match = localVariants.find(v =>
       (color === null || v.color === color) &&
       (size === null || v.size === size)
-    ) || variants[0]
+    ) || localVariants[0]
     setSelectedVariant(match)
-  }, [variants])
+  }, [localVariants])
 
   const handleColorSelect = (color: string) => {
     setSelectedColor(color)
@@ -88,13 +101,42 @@ export default function ProductBuyBox({ product, variants }: Props) {
     selectVariant(selectedColor, size)
   }
 
+  const handleAdminPriceSave = async () => {
+    const val = parseFloat(inputPrice)
+    if (isNaN(val) || val <= 0) return alert('Please enter a valid price.')
+    setSavingPrice(true)
+    try {
+      const newCompare = Math.round(val * 1.4 * 100) / 100
+      const res = await fetch(`/api/admin/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          price: val,
+          compareAtPrice: newCompare
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update price')
+      setBasePrice(val)
+      setBaseCompareAt(newCompare)
+      // Update all variants to match the new retail price
+      setLocalVariants(prev => prev.map(v => ({ ...v, retailPrice: val })))
+      if (selectedVariant) {
+        setSelectedVariant({ ...selectedVariant, retailPrice: val })
+      }
+      setIsEditingPrice(false)
+    } catch (err: any) {
+      alert(err.message || 'Error updating price')
+    } finally {
+      setSavingPrice(false)
+    }
+  }
+
   // Determine active price + stripe ID based on selected variant
-  const activePrice = selectedVariant ? selectedVariant.retailPrice : product.price
+  const activePrice = selectedVariant ? selectedVariant.retailPrice : basePrice
   const activeStripePriceId = selectedVariant?.stripeVariantPriceId || product.stripePriceId
   const hasCheckout = !!activeStripePriceId
   const lowStock = selectedVariant && selectedVariant.cjStock > 0 && selectedVariant.cjStock < 10
-  // Only treat as out-of-stock if CJ explicitly returns negative stock (discontinued variant).
-  // cjStock === 0 means "not yet synced from CJ" — do NOT block checkout on unsynced stock.
   const outOfStock = selectedVariant && selectedVariant.cjStock < 0
 
   // Gallery: use variant image as first if available, then product gallery
@@ -103,8 +145,8 @@ export default function ProductBuyBox({ product, variants }: Props) {
     ? [variantImage, ...product.galleryImages.filter(img => img !== variantImage)]
     : product.galleryImages
 
-  const compareAt = product.compareAtPrice || activePrice * 1.5
-  const savings = (compareAt - activePrice).toFixed(2)
+  const compareAt = baseCompareAt || activePrice * 1.5
+  const savings = Math.max(0, compareAt - activePrice).toFixed(2)
 
   return (
     <>
@@ -115,8 +157,49 @@ export default function ProductBuyBox({ product, variants }: Props) {
 
       {/* ── Buy column ── */}
       <div>
-        <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-2)' }}>
-          The Fix →
+        {/* Admin Quick-Price Bar */}
+        {isAdmin && (
+          <div style={{ background: '#11111a', border: '1px solid #7c3aed44', borderRadius: 8, padding: '7px 12px', marginBottom: 12, display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              🛡️ Admin Pricing
+            </span>
+            {!isEditingPrice ? (
+              <button
+                onClick={() => setIsEditingPrice(true)}
+                style={{ background: '#7c3aed22', border: '1px solid #7c3aed66', color: '#c4b5fd', borderRadius: 5, padding: '3px 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+              >
+                ✏️ Change Price Directly
+              </button>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={inputPrice}
+                  onChange={e => setInputPrice(e.target.value)}
+                  style={{ width: 80, background: '#0a0a0f', border: '1px solid #7c3aed', color: '#fff', borderRadius: 4, padding: '3px 8px', fontSize: 12, fontWeight: 700, outline: 'none' }}
+                />
+                <button
+                  onClick={handleAdminPriceSave}
+                  disabled={savingPrice}
+                  style={{ background: '#22c55e', border: 'none', color: '#fff', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  {savingPrice ? '…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setIsEditingPrice(false)}
+                  style={{ background: 'transparent', border: '1px solid #4a4a6a', color: '#94a3b8', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 'var(--space-2)' }}>
+          Verified Product →
         </p>
         <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 'clamp(1.5rem, 3vw, 2rem)', fontWeight: 800, color: 'var(--color-text-primary)', marginBottom: 'var(--space-3)', letterSpacing: '-0.02em' }}>
           {product.title}
