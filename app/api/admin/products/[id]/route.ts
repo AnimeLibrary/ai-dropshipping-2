@@ -48,6 +48,14 @@ export async function DELETE(
 
   try {
     const { id } = await params
+
+    // Clean up dependent child rows first to prevent foreign key errors
+    await prisma.orderItem.deleteMany({ where: { productId: id } }).catch(() => {})
+    await prisma.productVariant.deleteMany({ where: { productId: id } }).catch(() => {})
+    await prisma.supplier.deleteMany({ where: { productId: id } }).catch(() => {})
+    await prisma.review.deleteMany({ where: { productId: id } }).catch(() => {})
+    await prisma.priceLog.deleteMany({ where: { productId: id } }).catch(() => {})
+
     await prisma.product.delete({ where: { id } })
     return NextResponse.json({ success: true, message: 'Product deleted' })
   } catch (error: any) {

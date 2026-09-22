@@ -284,14 +284,55 @@ export class CJService {
   }
 
   // ─── NORMALIZERS ─────────────────────────────────────────────
+  private extractImages(p: any): string[] {
+    const images: string[] = []
+    const addImg = (val: any) => {
+      if (!val) return
+      if (Array.isArray(val)) {
+        val.forEach(item => addImg(item))
+      } else if (typeof val === 'string') {
+        const trimmed = val.trim()
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(trimmed)
+            if (Array.isArray(parsed)) {
+              parsed.forEach(item => addImg(item))
+              return
+            }
+          } catch {}
+        }
+        if (trimmed.includes(',')) {
+          trimmed.split(',').forEach(sub => addImg(sub))
+          return
+        }
+        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+          if (!images.includes(trimmed)) images.push(trimmed)
+        }
+      }
+    }
+
+    addImg(p.productImageSet)
+    addImg(p.productImage)
+    addImg(p.productImages)
+    addImg(p.bigImage)
+    addImg(p.imageList)
+    if (Array.isArray(p.variants || p.productVariants)) {
+      (p.variants || p.productVariants).forEach((v: any) => addImg(v?.variantImage))
+    }
+    if (p.productVideo) addImg(p.productVideo)
+
+    return images
+  }
+
   private normalizeSearchResult(p: any): CJFullProduct {
     const rawPrice = String(p.sellPrice || p.productPrice || 0)
     const supplierPrice = parseFloat(rawPrice.split('-')[0]) || 0
+    const images = this.extractImages(p)
     return {
       pid: String(p.pid || p.productId || ''),
       title: p.productNameEn || p.productName || 'Unknown',
-      image: p.productImage || '',
-      images: p.productImage ? [p.productImage] : [],
+      image: images[0] || '',
+      images,
       supplierPrice,
       sellPrice: supplierPrice,
       categoryName: p.categoryName || 'General',
@@ -330,12 +371,7 @@ export class CJService {
       }
     })
 
-    // Collect all images
-    const images: string[] = []
-    if (p.productImage) images.push(p.productImage)
-    if (Array.isArray(p.productImages)) images.push(...p.productImages)
-    if (Array.isArray(p.imageList)) images.push(...p.imageList.map((i: any) => i.imageUrl || i).filter(Boolean))
-    const uniqueImages = images.filter((v, i, a) => a.indexOf(v) === i)
+    const uniqueImages = this.extractImages(p)
 
     return {
       pid: String(p.pid || p.productId || ''),

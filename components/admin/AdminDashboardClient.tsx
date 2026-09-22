@@ -303,6 +303,24 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
     finally { setLoadingId(null) }
   }
 
+  const handleDeleteProduct = async (productId: string) => {
+    if (!window.confirm('Are you sure you want to permanently delete this product?')) return
+    setLoadingId(productId)
+    try {
+      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to delete product')
+      setPending(prev => prev.filter(p => p.id !== productId))
+      setApproved(prev => prev.filter(p => p.id !== productId))
+      setAllProducts(prev => prev.filter(p => p.id !== productId))
+      showToast('🗑️ Product permanently deleted', 'ok')
+    } catch (err: any) {
+      showToast(err.message || 'Failed to delete product', 'err')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   const handleEnrich = async (productId: string, productTitle: string) => {
     setLoadingId(`enrich-${productId}`)
     try {
@@ -407,22 +425,6 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
       showToast(e.message, 'err')
     } finally {
       setImportingPid(null)
-    }
-  }
-
-  const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('Are you sure you want to permanently delete this product?')) return
-    setLoadingId(productId)
-    try {
-      const res = await fetch(`/api/admin/products/${productId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Delete failed')
-      setPending(prev => prev.filter(p => p.id !== productId))
-      setApproved(prev => prev.filter(p => p.id !== productId))
-      showToast('🗑️ Product deleted')
-    } catch (e: any) {
-      showToast(e.message, 'err')
-    } finally {
-      setLoadingId(null)
     }
   }
 
@@ -1054,6 +1056,9 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                           </button>
                         )}
                         <Tag color='#22c55e'>APPROVED</Tag>
+                        <button onClick={()=>handleDeleteProduct(p.id)} disabled={loadingId===p.id} style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:6, padding:'4px 8px', cursor:'pointer', fontWeight:700, fontSize:11 }} title="Permanently delete">
+                          🗑️
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -1118,6 +1123,9 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                           )}
                           <button onClick={e=>{e.stopPropagation();handleSeoPush(p.id,p.title)}} disabled={loadingId===`seo-${p.id}`} title="Push SEO cluster" style={{ background:'#14b8a622', border:'1px solid #14b8a644', color:'#5eead4', borderRadius:5, padding:'4px 10px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
                             {loadingId===`seo-${p.id}` ? '⏳' : '📈 SEO'}
+                          </button>
+                          <button onClick={e=>{e.stopPropagation();handleDeleteProduct(p.id)}} disabled={loadingId===p.id} title="Delete product" style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#f87171', borderRadius:5, padding:'4px 8px', cursor:'pointer', fontWeight:700, fontSize:11 }}>
+                            🗑️
                           </button>
                           <span style={{ color:'#4a4a6a', fontSize:14 }}>{isExpanded ? '▲' : '▼'}</span>
                         </div>
@@ -1580,33 +1588,111 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
           </div>
         )}
 
-        {/* ── DATA FLOW PANEL ── */}
+        {/* ── DATA FLOW PANEL (MANUAL OPERATOR PIPELINE) ── */}
         {panel === 'flow' && (
           <div>
-            <h1 style={{ fontSize:20, fontWeight:800, margin:'0 0 20px' }}>🔀 Data Flow</h1>
-            <div style={{ display:'flex', flexDirection:'column', gap:0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <h1 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>🔀 Manual Operations Flow</h1>
+                <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 0' }}>Your 6-step manual control loop — zero AI, 100% human-guided precision.</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {[
-                { step:'1', label:'Data Ingestion', desc:'Paste Kalodata/Minea CSV into AI Agent → parsed + DB write', count: pending.length + approved.length, color:'#7c3aed', status: (pending.length + approved.length) > 0 },
-                { step:'2', label:'AI Analysis', desc:'Agent calls analyze_product → saturation score, margin check, supplier intel', count: approved.length, color:'#60a5fa', status: approved.length > 0 },
-                { step:'3', label:'Admin Approval', desc:'You approve/reject via dashboard or AI chat → DB status update', count: approved.length, color:'#22c55e', status: approved.length > 0 },
-                { step:'4', label:'Stripe Sync', desc:'Approved products → Stripe Product + Price created → storefront live', count: 0, color:'#f59e0b', status: false },
-                { step:'5', label:'Checkout', desc:'Customer pays → Stripe Checkout Session → Webhook fires', count: orders.length, color:'#f59e0b', status: orders.length > 0 },
-                { step:'6', label:'AutoDS Fulfillment', desc:'Order DB write → AutoDS API push → supplier ships to customer', count: orders.filter(o=>o.status==='shipped').length, color:'#34d399', status: orders.some(o=>o.status==='shipped') },
+                {
+                  step: '1',
+                  label: 'Sourcing & Niche Discovery',
+                  desc: 'Search CJ Dropshipping catalogue by keywords or best-sellers. Filter real inventory & supplier metrics.',
+                  count: `${cjResults.length} found`,
+                  color: '#38bdf8',
+                  status: cjResults.length > 0,
+                  actionLabel: '⚡ Open CJ Sourcing',
+                  action: () => setPanel('sourcing')
+                },
+                {
+                  step: '2',
+                  label: 'Price & Margin Calculator',
+                  desc: 'Fine-tune your retail price with live Stripe fee deduction (2.9% + 30¢). Verify ≥40% margin & ≥$10 profit.',
+                  count: `${pending.length} pending`,
+                  color: '#a855f7',
+                  status: pending.length > 0,
+                  actionLabel: '💰 Check Margins',
+                  action: () => setPanel('sourcing')
+                },
+                {
+                  step: '3',
+                  label: 'Visual Media & Customizer',
+                  desc: 'Curate product gallery & demo videos. Delete low-quality supplier photos or paste custom marketing assets.',
+                  count: `${pending.length} in pipeline`,
+                  color: '#ec4899',
+                  status: pending.length > 0,
+                  actionLabel: '🎬 Edit Media',
+                  action: () => { setPanel('products'); setProductsTab('pipeline') }
+                },
+                {
+                  step: '4',
+                  label: 'Approve & Push to Stripe',
+                  desc: 'Mark listing approved, then 1-click sync to Stripe to generate live checkout products & prices.',
+                  count: `${approved.length} approved`,
+                  color: '#22c55e',
+                  status: approved.length > 0,
+                  actionLabel: '✅ Review & Sync',
+                  action: () => { setPanel('products'); setProductsTab('pipeline') }
+                },
+                {
+                  step: '5',
+                  label: 'Customer Storefront & Checkout',
+                  desc: 'Customers browse /products/[slug] and complete checkout. Stripe webhook triggers order record in DB.',
+                  count: `${orders.length} orders`,
+                  color: '#f59e0b',
+                  status: orders.length > 0,
+                  actionLabel: '🛒 View Orders',
+                  action: () => setPanel('orders')
+                },
+                {
+                  step: '6',
+                  label: 'CJ Fulfillment & Tracking',
+                  desc: 'Verify customer shipping address, push order to CJ Dropshipping for supplier dispatch, and sync tracking.',
+                  count: `${orders.filter(o=>o.status==='shipped').length} shipped`,
+                  color: '#10b981',
+                  status: orders.some(o=>o.status==='shipped'),
+                  actionLabel: '📦 Fulfillment Hub',
+                  action: () => setPanel('orders')
+                },
               ].map((s, i, arr) => (
                 <div key={s.step} style={{ display:'flex', gap:16, alignItems:'stretch' }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', width:32, flexShrink:0 }}>
                     <div style={{ width:32, height:32, borderRadius:'50%', background: s.status ? `${s.color}33` : '#1e1e2e', border:`2px solid ${s.status ? s.color : '#2e2e4e'}`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:12, color: s.status ? s.color : '#4a4a6a', flexShrink:0 }}>{s.step}</div>
                     {i < arr.length-1 && <div style={{ flex:1, width:2, background: s.status ? `${s.color}44` : '#1e1e2e', margin:'4px 0' }} />}
                   </div>
-                  <div style={{ ...card, flex:1, marginLeft:0, marginBottom:i < arr.length-1 ? 0 : 16, borderRadius:10, borderColor: s.status ? `${s.color}33` : '#1e1e2e' }}>
-                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <div>
-                        <div style={{ fontWeight:700, color: s.status ? s.color : '#6b7280', marginBottom:4 }}>{s.label}</div>
-                        <div style={{ fontSize:12, color:'#6b7280' }}>{s.desc}</div>
+                  <div style={{ ...card, flex:1, marginLeft:0, marginBottom:i < arr.length-1 ? 12 : 16, borderRadius:10, borderColor: s.status ? `${s.color}33` : '#1e1e2e', padding: '14px 18px' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight:700, color: s.status ? s.color : '#e2e8f0', fontSize: 13, marginBottom:4 }}>{s.label}</div>
+                        <div style={{ fontSize:12, color:'#6b7280', lineHeight: '1.4' }}>{s.desc}</div>
                       </div>
-                      <div style={{ textAlign:'right', flexShrink:0 }}>
-                        <div style={{ fontSize:18, fontWeight:800, color: s.count > 0 ? s.color : '#2e2e4e' }}>{s.count}</div>
-                        <Tag color={s.status?s.color:'#4a4a6a'}>{s.status?'ACTIVE':'WAITING'}</Tag>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                        <div style={{ textAlign:'right' }}>
+                          <div style={{ fontSize:13, fontWeight:800, color: s.status ? s.color : '#4a4a6a' }}>{s.count}</div>
+                          <Tag color={s.status?s.color:'#4a4a6a'}>{s.status?'ACTIVE':'IDLE'}</Tag>
+                        </div>
+                        <button
+                          onClick={s.action}
+                          style={{
+                            background: `${s.color}18`,
+                            border: `1px solid ${s.color}44`,
+                            color: s.color,
+                            borderRadius: 6,
+                            padding: '6px 12px',
+                            cursor: 'pointer',
+                            fontWeight: 700,
+                            fontSize: 11,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {s.actionLabel} →
+                        </button>
                       </div>
                     </div>
                   </div>
