@@ -8,7 +8,7 @@ export default function PrivacyPage() {
 
       <section style={{ marginBottom: 40 }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16 }}>1. Information We Collect</h2>
-        <p>When you visit TrendDrop, we automatically collect certain information about your device, including information about your web browser, IP address, and time zone. Additionally, as you browse the Site, we collect information about the individual web pages or products that you view.</p>
+        <p>When you visit Vexsen, we automatically collect certain information about your device, including information about your web browser, IP address, and time zone. Additionally, as you browse the Site, we collect information about the individual web pages or products that you view.</p>
       </section>
 
       <section style={{ marginBottom: 40 }}>

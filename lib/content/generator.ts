@@ -88,7 +88,7 @@ export function generateGuideContent(cluster: any): GeneratedPageContent {
 
 export function generateProblemContent(cluster: KeywordCluster): GeneratedPageContent {
   return {
-    metaTitle: `${toTitleCase(cluster.keyword)} — Why It Happens & How to Fix It | TrendDrop`,
+    metaTitle: `${toTitleCase(cluster.keyword)} — Why It Happens & How to Fix It | Vexsen`,
     metaDescription: cluster.painPoint,
     h1: `The Real Reason You're Dealing With: ${toTitleCase(cluster.keyword)}`,
     heroSubline: cluster.solutionAngle,
@@ -121,7 +121,7 @@ export function generateProblemContent(cluster: KeywordCluster): GeneratedPageCo
 
 export function generateSolutionContent(cluster: KeywordCluster): GeneratedPageContent {
   return {
-    metaTitle: `${toTitleCase(cluster.keyword)} — Compare & Find the Best | TrendDrop`,
+    metaTitle: `${toTitleCase(cluster.keyword)} — Compare & Find the Best | Vexsen`,
     metaDescription: `Compare the best solutions for ${cluster.painPoint.toLowerCase()} Side-by-side breakdown so you choose what actually works for your situation.`,
     h1: `Best ${toTitleCase(cluster.keyword)} — Compared`,
     heroSubline: `Stop guessing. Here's a data-backed comparison of every option.`,

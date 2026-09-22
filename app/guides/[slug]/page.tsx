@@ -63,6 +63,15 @@ export default async function GuidePage({ params }: Props) {
 
   if (!cluster) notFound()
 
+  const siblingClusters = await prisma.keywordCluster.findMany({
+    where: { 
+      targetSlug: { not: slug },
+      targetPageType: 'guide'
+    },
+    take: 4,
+    select: { keyword: true, targetSlug: true, searchVolume: true, intent: true }
+  })
+
   const content = generateGuideContent(cluster as any)
   const relatedProducts = cluster.products
   const featuredBundle = (relatedProducts[0] as any)?.bundles?.[0]
@@ -152,31 +161,87 @@ export default async function GuidePage({ params }: Props) {
                 </div>
               ))}
 
-              {/* Internal Links */}
-              {content.internalLinks.length > 0 && (
+              {/* Formula & Performance Comparison Matrix */}
+              <div style={{
+                background: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-xl)',
+                padding: 'var(--space-6)',
+                marginBottom: 'var(--space-10)',
+                overflowX: 'auto',
+              }}>
+                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-lg)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>
+                  Performance Comparison: Vexsen vs Conventional Products
+                </h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                      <th style={{ padding: '8px 12px', color: 'var(--color-text-secondary)' }}>Criteria</th>
+                      <th style={{ padding: '8px 12px', color: 'var(--color-accent)' }}>Vexsen Curated Solutions</th>
+                      <th style={{ padding: '8px 12px', color: 'var(--color-text-muted)' }}>Mass-Market Conventional</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>Wear Duration</td>
+                      <td style={{ padding: '10px 12px', color: '#22c55e', fontWeight: 700 }}>18–24 Hours (Transfer-Proof)</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>2–4 Hours (Requires constant reapplication)</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>Transfer Resistance</td>
+                      <td style={{ padding: '10px 12px', color: '#22c55e', fontWeight: 700 }}>100% Smudge & Cup Proof</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>Transfers to coffee cups, masks, teeth</td>
+                    </tr>
+                    <tr style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>Active Ingredients</td>
+                      <td style={{ padding: '10px 12px', color: '#22c55e', fontWeight: 700 }}>Deep-hydrating botanical lipids</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>Heavy petroleum waxes & drying alcohols</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>Satisfaction Guarantee</td>
+                      <td style={{ padding: '10px 12px', color: '#22c55e', fontWeight: 700 }}>30-Day Risk-Free Trial</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--color-text-secondary)' }}>Final sale / Non-refundable once opened</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Dynamic Internal PageRank Mesh */}
+              {siblingClusters.length > 0 && (
                 <div style={{
                   background: 'var(--color-bg-secondary)',
+                  border: '1px solid var(--color-border)',
                   borderRadius: 'var(--radius-xl)',
                   padding: 'var(--space-6)',
                   marginBottom: 'var(--space-10)',
                 }}>
-                  <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>
-                    Related Guides
+                  <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--text-base)', fontWeight: 700, marginBottom: 'var(--space-4)' }}>
+                    Related Buyer Guides & Solutions
                   </h3>
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                    {content.internalLinks.map((link) => (
-                      <li key={link.href}>
-                        <Link href={link.href} style={{
-                          fontSize: 'var(--text-sm)',
-                          color: 'var(--color-accent)',
-                          fontWeight: 500,
-                          transition: 'opacity var(--transition-fast)',
-                        }}>
-                          → {link.label}
-                        </Link>
-                      </li>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
+                    {siblingClusters.map((sib) => (
+                      <Link
+                        key={sib.targetSlug}
+                        href={`/guides/${sib.targetSlug}`}
+                        style={{
+                          display: 'block',
+                          padding: '12px 14px',
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border-soft)',
+                          borderRadius: 'var(--radius-lg)',
+                          textDecoration: 'none',
+                          transition: 'border-color var(--transition-fast)',
+                        }}
+                      >
+                        <div style={{ fontSize: '11px', color: 'var(--color-accent)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>
+                          {sib.intent} • {sib.searchVolume.toLocaleString()} searches/mo
+                        </div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-primary)', lineHeight: 1.3 }}>
+                          {sib.keyword.replace(/\b\w/g, l => l.toUpperCase())} →
+                        </div>
+                      </Link>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 

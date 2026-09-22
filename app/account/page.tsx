@@ -2,7 +2,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
-  title: 'My Account | TrendDrop'
+  title: 'My Account | Vexsen'
 }
 
 export default async function AccountPage() {

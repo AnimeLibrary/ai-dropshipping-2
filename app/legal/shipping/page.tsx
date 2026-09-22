@@ -29,12 +29,12 @@ export default function ShippingPage() {
 
       <section style={{ marginBottom: 40 }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16 }}>Customs, Duties, and Taxes</h2>
-        <p>TrendDrop is not responsible for any customs and taxes applied to your order. All fees imposed during or after shipping are the responsibility of the customer (tariffs, taxes, etc.).</p>
+        <p>Vexsen is not responsible for any customs and taxes applied to your order. All fees imposed during or after shipping are the responsibility of the customer (tariffs, taxes, etc.).</p>
       </section>
 
       <section style={{ marginBottom: 40 }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16 }}>Damages</h2>
-        <p>TrendDrop is not liable for any products damaged or lost during shipping. If you received your order damaged, please contact the shipment carrier to file a claim. Please save all packaging materials and damaged goods before filing a claim.</p>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: 16 }}>6. Damages</h2>
+        <p>Vexsen is not liable for any products damaged or lost during shipping. If you received your order damaged, please contact our 24/7 support team immediately to file a claim. Please save all packaging materials and damaged goods before filing a claim.</p>
       </section>
     </div>
   )
