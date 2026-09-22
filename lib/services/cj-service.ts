@@ -74,33 +74,112 @@ export class CJService {
     return this.accessToken!
   }
 
-  private async request(path: string, method = 'GET', body?: object) {
+  private lastRequestTime: number = 0
+
+  private async request(path: string, method = 'GET', body?: object, retries = 3): Promise<any> {
+    // Respect CJ's strict 1 QPS (1 request / second) rate limit
+    const now = Date.now()
+    const elapsed = now - this.lastRequestTime
+    if (elapsed < 1100) {
+      await new Promise(r => setTimeout(r, 1100 - elapsed))
+    }
+    this.lastRequestTime = Date.now()
+
     const token = await this.getAccessToken()
     const res = await fetch(`${CJ_BASE}${path}`, {
       method,
       headers: { 'CJ-Access-Token': token, 'Content-Type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {})
     })
-    return res.json()
+    const data = await res.json().catch(() => null)
+
+    // Check for 429 / QPS throttling and auto-retry
+    if (data?.code === 429 || data?.message?.includes('QPS limit') || data?.message?.includes('Too Many Requests')) {
+      if (retries > 0) {
+        console.warn(`[CJ QPS Throttled] Backing off 1.3s, retries left: ${retries}`)
+        await new Promise(r => setTimeout(r, 1300))
+        return this.request(path, method, body, retries - 1)
+      }
+    }
+
+    return data
   }
 
   // ─── 1. BEST-SELLER SEARCH ───────────────────────────────────
   /**
-   * Search products sorted by sales volume — best sellers FIRST.
-   * Used by Llama when the user asks for products, and by the auto-scout.
+   * Smart CJ Search:
+   * 1. Direct PID or CJ URL detection
+   * 2. CJ SKU lookup
+   * 3. Best-seller search sorted by sales volume
+   * 4. Fallback search without sales volume sort (catches newer/unranked products)
+   * 5. Fuzzy 2-word keyword fallback for long-tail queries
    */
-  async searchBestSellers(keyword: string, pageSize: number = 10): Promise<CJFullProduct[]> {
-    const data = await this.request(
-      `/product/list?pageNum=1&pageSize=${pageSize}&productNameEn=${encodeURIComponent(keyword)}&sortField=salesVolume&sortOrder=DESC`
+  async searchBestSellers(keyword: string, pageSize: number = 16): Promise<CJFullProduct[]> {
+    const raw = (keyword || '').trim()
+    if (!raw) return []
+
+    // Strategy 1: Direct PID or CJ URL detection
+    let directPid: string | null = null
+    if (/^\d{10,}$/.test(raw)) {
+      directPid = raw
+    } else {
+      const urlMatch = raw.match(/cjdropshipping\.com\/product\/.*?(\d{10,})\.html/) ||
+                       raw.match(/-p-(\d{10,})\.html/) ||
+                       raw.match(/[?&]pid=(\d{10,})/)
+      if (urlMatch) {
+        directPid = urlMatch[1]
+      }
+    }
+
+    if (directPid) {
+      const single = await this.getFullProductWithVariants(directPid)
+      if (single) return [single]
+    }
+
+    // Strategy 2: CJ SKU lookup (e.g., CJJJT...)
+    if (/^CJ[A-Z0-9_-]{5,}$/i.test(raw)) {
+      const skuData = await this.request(
+        `/product/list?pageNum=1&pageSize=${pageSize}&productSku=${encodeURIComponent(raw)}`
+      )
+      const skuList: any[] = skuData?.data?.list || []
+      if (skuList.length > 0) {
+        return skuList.map(p => this.normalizeSearchResult(p))
+      }
+    }
+
+    // Sanitize keyword: remove punctuation/special characters that choke CJ's search engine
+    const cleanKw = raw.replace(/[^\w\s-]/g, ' ').replace(/\s+/g, ' ').trim()
+
+    // Strategy 3: Best-seller search sorted by salesVolume
+    let data = await this.request(
+      `/product/list?pageNum=1&pageSize=${pageSize}&productNameEn=${encodeURIComponent(cleanKw)}&sortField=salesVolume&sortOrder=DESC`
     )
-    const list: any[] = data.data?.list || []
+    let list: any[] = data?.data?.list || []
+
+    // Strategy 4: Fallback without sortField (newer or unranked items without salesVolume scores)
+    if (list.length === 0) {
+      data = await this.request(
+        `/product/list?pageNum=1&pageSize=${pageSize}&productNameEn=${encodeURIComponent(cleanKw)}`
+      )
+      list = data?.data?.list || []
+    }
+
+    // Strategy 5: Fuzzy fallback for long queries (extract primary tokens)
+    if (list.length === 0 && cleanKw.split(' ').length > 2) {
+      const shortKw = cleanKw.split(' ').slice(0, 2).join(' ')
+      data = await this.request(
+        `/product/list?pageNum=1&pageSize=${pageSize}&productNameEn=${encodeURIComponent(shortKw)}&sortField=salesVolume&sortOrder=DESC`
+      )
+      list = data?.data?.list || []
+    }
+
     return list.map(p => this.normalizeSearchResult(p))
   }
 
   /**
    * Basic keyword search (fallback / original behavior).
    */
-  async searchProduct(keyword: string, count = 5): Promise<CJFullProduct[]> {
+  async searchProduct(keyword: string, count = 16): Promise<CJFullProduct[]> {
     return this.searchBestSellers(keyword, count)
   }
 

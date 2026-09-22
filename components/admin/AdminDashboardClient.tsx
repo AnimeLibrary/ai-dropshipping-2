@@ -519,7 +519,7 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
                   value={cjKeyword}
                   onChange={e => setCjKeyword(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleCjSearch()}
-                  placeholder="Search products e.g. 'posture corrector', 'dog harness', 'lumbar support'..."
+                  placeholder="Search keywords ('ice roller', 'posture corrector'), paste CJ Product ID, or paste CJ URL..."
                   style={{
                     flex:1, background:'#09090e', border:'1px solid #2e2e4e', color:'#fff',
                     borderRadius:8, padding:'10px 14px', fontSize:13, outline:'none'
