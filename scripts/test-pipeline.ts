@@ -54,7 +54,7 @@ async function runPipelineDiagnostics() {
     allPassed = false
   } else {
     try {
-      const token = await cj.getAccessToken()
+      const token = await (cj as any).getAccessToken()
       if (token) {
         console.log('✅ CJ Dropshipping Authenticated! Access Token active.')
       } else {

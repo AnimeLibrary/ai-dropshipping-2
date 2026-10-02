@@ -146,6 +146,7 @@ export default async function ProductPage({ params }: Props) {
           <div className="container">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-12)', alignItems: 'start' }}>
               <ProductBuyBox
+                key={product.id}
                 product={{
                   id: product.id,
                   title: product.title,

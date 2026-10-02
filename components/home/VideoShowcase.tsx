@@ -93,9 +93,11 @@ export default function VideoShowcase({ config, onEdit, isEditing }: VideoShowca
 
       <div className="container">
         <div
+          className="video-showcase-grid"
+          data-vertical={isVertical ? 'true' : 'false'}
           style={{
             display: 'grid',
-            gridTemplateColumns: isVertical ? 'minmax(280px, 360px) 1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
+            gridTemplateColumns: isVertical ? 'minmax(0, 380px) 1fr' : '1fr 1fr',
             gap: 'var(--space-8)',
             alignItems: 'center',
           }}

@@ -62,7 +62,7 @@ export default function StickyCTA() {
           >
             {STICKY_MESSAGES[msgIndex]}
           </p>
-          <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
+          <p className="hide-mobile" style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
             Every product here passed a 3-layer validation before you saw it.
           </p>
         </div>

@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { useUser } from '@clerk/nextjs'
 import CheckoutButton from '@/components/commerce/CheckoutButton'
 import ProductGallery from '@/components/commerce/ProductGallery'
+import { useCart } from '@/lib/context/CartContext'
 
 interface Variant {
   id: string
@@ -62,6 +63,7 @@ export default function ProductBuyBox({ product, variants }: Props) {
   const { user, isLoaded } = useUser()
   const userEmail = user?.primaryEmailAddress?.emailAddress?.toLowerCase()
   const isAdmin = isLoaded && (userEmail === 'brannenguidry28@gmail.com' || (user?.publicMetadata as any)?.role === 'admin')
+  const { addItem } = useCart()
 
   const [localVariants, setLocalVariants] = useState<Variant[]>(variants)
   const defaultVariant = localVariants.find(v => v.isDefault) || localVariants[0] || null
@@ -70,6 +72,7 @@ export default function ProductBuyBox({ product, variants }: Props) {
   const [selectedColor, setSelectedColor] = useState<string | null>(defaultVariant?.color || null)
   const [selectedSize, setSelectedSize] = useState<string | null>(defaultVariant?.size || null)
   const [quantity, setQuantity] = useState<number>(1)
+  const [addedToCartToast, setAddedToCartToast] = useState(false)
 
   // Admin editing state
   const [adminTab, setAdminTab] = useState<'none' | 'price' | 'title' | 'desc'>('none')
@@ -94,6 +97,12 @@ export default function ProductBuyBox({ product, variants }: Props) {
   const colors = uniqueColors(localVariants)
   const sizes = uniqueSizes(localVariants)
 
+  const handleVariantSelect = (v: Variant) => {
+    setSelectedVariant(v)
+    if (v.color) setSelectedColor(v.color)
+    if (v.size) setSelectedSize(v.size)
+  }
+
   // When color or size selection changes, find the matching variant
   const selectVariant = useCallback((color: string | null, size: string | null) => {
     const match = localVariants.find(v =>
@@ -111,6 +120,22 @@ export default function ProductBuyBox({ product, variants }: Props) {
   const handleSizeSelect = (size: string) => {
     setSelectedSize(size)
     selectVariant(selectedColor, size)
+  }
+
+  const handleAddToCart = () => {
+    addItem({
+      id: `${product.id}_${selectedVariant?.id || 'default'}`,
+      productId: product.id,
+      variantId: selectedVariant?.id || null,
+      vid: selectedVariant?.vid || null,
+      title: currentTitle,
+      variantLabel: selectedVariant && !selectedVariant.isDefault ? selectedVariant.label : undefined,
+      price: selectedVariant ? selectedVariant.retailPrice : basePrice,
+      image: selectedVariant?.image || product.heroImage || null,
+      slug: product.slug,
+    }, quantity)
+    setAddedToCartToast(true)
+    setTimeout(() => setAddedToCartToast(false), 2500)
   }
 
   const handleAdminPriceSave = async () => {
@@ -187,7 +212,7 @@ export default function ProductBuyBox({ product, variants }: Props) {
   // Determine active price + stripe ID based on selected variant
   const activePrice = selectedVariant ? selectedVariant.retailPrice : basePrice
   const activeStripePriceId = selectedVariant?.stripeVariantPriceId || product.stripePriceId
-  const hasCheckout = !!activeStripePriceId
+  const hasCheckout = activePrice > 0
   const lowStock = selectedVariant && selectedVariant.cjStock > 0 && selectedVariant.cjStock < 10
   const outOfStock = selectedVariant && selectedVariant.cjStock < 0
 
@@ -384,9 +409,8 @@ export default function ProductBuyBox({ product, variants }: Props) {
         {/* ── VARIANT SELECTOR ── */}
         {hasVariants && (
           <div style={{ marginBottom: 'var(--space-5)' }}>
-
-            {/* Color Swatches */}
-            {colors.length > 0 && (
+            {/* Color Swatches if available */}
+            {colors.length > 1 && (
               <div style={{ marginBottom: 'var(--space-4)' }}>
                 <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-2)' }}>
                   Color: <span style={{ color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>{selectedColor || 'Select'}</span>
@@ -395,6 +419,7 @@ export default function ProductBuyBox({ product, variants }: Props) {
                   {colors.map(color => (
                     <button
                       key={color}
+                      type="button"
                       onClick={() => handleColorSelect(color)}
                       title={color}
                       style={{
@@ -414,9 +439,9 @@ export default function ProductBuyBox({ product, variants }: Props) {
               </div>
             )}
 
-            {/* Size Buttons */}
-            {sizes.length > 0 && (
-              <div>
+            {/* Size Buttons if available */}
+            {sizes.length > 1 && (
+              <div style={{ marginBottom: 'var(--space-4)' }}>
                 <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-2)' }}>
                   Size: <span style={{ color: 'var(--color-text-primary)' }}>{selectedSize || 'Select'}</span>
                 </p>
@@ -425,10 +450,11 @@ export default function ProductBuyBox({ product, variants }: Props) {
                     const variantForSize = variants.find(v =>
                       v.size === size && (selectedColor === null || v.color === selectedColor)
                     )
-                    const inStock = !variantForSize || variantForSize.cjStock !== 0
+                    const inStock = !variantForSize || variantForSize.cjStock >= 0
                     return (
                       <button
                         key={size}
+                        type="button"
                         onClick={() => inStock && handleSizeSelect(size)}
                         disabled={!inStock}
                         style={{
@@ -452,6 +478,116 @@ export default function ProductBuyBox({ product, variants }: Props) {
                 </div>
               </div>
             )}
+
+            {/* All Options / Shades Grid */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                <p style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+                  Option / Shade: <span style={{ color: 'var(--color-text-primary)', fontWeight: 800 }}>{selectedVariant?.label || 'Select an option'}</span>
+                </p>
+                <span style={{ fontSize: '11px', background: 'rgba(124, 58, 237, 0.15)', color: '#c4b5fd', padding: '2px 8px', borderRadius: 999, fontWeight: 700, border: '1px solid rgba(124, 58, 237, 0.3)' }}>
+                  {localVariants.length} Choices Available
+                </span>
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))',
+                  gap: 8,
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  paddingRight: '4px',
+                  paddingBottom: '4px',
+                  scrollbarWidth: 'thin',
+                }}
+              >
+                {localVariants.map(v => {
+                  const isSelected = selectedVariant?.id === v.id
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => handleVariantSelect(v)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '8px 10px',
+                        borderRadius: 'var(--radius-md)',
+                        border: isSelected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
+                        background: isSelected ? 'rgba(124,58,237,0.18)' : 'var(--color-bg-secondary)',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
+                        boxShadow: isSelected ? '0 0 12px rgba(124,58,237,0.35)' : 'none',
+                        position: 'relative',
+                      }}
+                    >
+                      {v.image ? (
+                        <img
+                          src={v.image}
+                          alt={v.label}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 6,
+                            objectFit: 'cover',
+                            flexShrink: 0,
+                            border: isSelected ? '1px solid var(--color-accent)' : '1px solid rgba(255,255,255,0.1)'
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 6,
+                            background: isSelected ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.06)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '12px',
+                            fontWeight: 800,
+                            color: isSelected ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                            flexShrink: 0,
+                          }}
+                        >
+                          ✦
+                        </div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: isSelected ? 800 : 600,
+                            color: isSelected ? '#fff' : 'var(--color-text-primary)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {v.label}
+                        </div>
+                        {v.retailPrice !== basePrice ? (
+                          <div style={{ fontSize: '11px', color: isSelected ? 'var(--color-accent)' : 'var(--color-text-muted)', fontWeight: 700 }}>
+                            ${v.retailPrice.toFixed(2)}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                            ${v.retailPrice.toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                      {isSelected && (
+                        <span style={{ fontSize: '11px', color: 'var(--color-accent)', fontWeight: 900 }}>
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             {/* Selected variant label + stock */}
             {selectedVariant && (
@@ -582,15 +718,89 @@ export default function ProductBuyBox({ product, variants }: Props) {
               </div>
             )}
 
-            <CheckoutButton
-              productId={product.id}
-              title={`${product.title}${selectedVariant && !selectedVariant.isDefault ? ` — ${selectedVariant.label}` : ''}`}
-              price={activePrice}
-              quantity={quantity}
-              imageUrl={variantImage || product.heroImage || undefined}
-              priceId={activeStripePriceId || undefined}
-            />
-            <p style={{ position: 'absolute', top: '40px', right: '-10px', background: 'var(--color-accent)', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '4px 8px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', transform: 'rotate(4deg)' }}>
+            {/* Quantity Stepper & Dual Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: 'var(--color-bg-secondary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Quantity:
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--color-border)', color: '#fff', borderRadius: '4px', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}
+                  >
+                    -
+                  </button>
+                  <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--color-text-primary)', minWidth: '24px', textAlign: 'center' }}>
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity(Math.min(10, quantity + 1))}
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--color-border)', color: '#fff', borderRadius: '4px', width: '28px', height: '28px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px' }}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  className="btn btn-secondary btn-lg"
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    fontWeight: 700,
+                    fontSize: '14px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    color: '#fff',
+                    borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer',
+                    padding: '12px',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <span>🛒</span> Add to Bag
+                </button>
+
+                <CheckoutButton
+                  productId={product.id}
+                  variantId={selectedVariant?.id || undefined}
+                  title={`${product.title}${selectedVariant && !selectedVariant.isDefault ? ` — ${selectedVariant.label}` : ''}`}
+                  price={activePrice}
+                  quantity={quantity}
+                  imageUrl={variantImage || product.heroImage || undefined}
+                  priceId={activeStripePriceId || undefined}
+                />
+              </div>
+
+              {addedToCartToast && (
+                <div style={{
+                  padding: '8px 14px',
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  borderRadius: '6px',
+                  color: '#4ade80',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  textAlign: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}>
+                  ✓ Added to your bag!
+                </div>
+              )}
+            </div>
+            <p style={{ position: 'absolute', top: '40px', right: '-10px', background: 'var(--color-accent)', color: '#fff', fontSize: '10px', fontWeight: 800, padding: '4px 8px', borderRadius: '12px', textTransform: 'uppercase', letterSpacing: '0.05em', transform: 'rotate(4deg)', pointerEvents: 'none' }}>
               Limited Batch
             </p>
           </div>

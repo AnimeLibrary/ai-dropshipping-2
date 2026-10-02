@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import VexsenAuthButton from '@/components/auth/VexsenAuthButton'
 import { useTheme } from './ThemeProvider'
+import { useCart } from '@/lib/context/CartContext'
 
 const NAV_LINKS = [
   { href: '/#trending-products', label: 'Shop Products' },
@@ -16,6 +17,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { theme, toggle } = useTheme()
+  const { toggleCart, totalCount } = useCart()
   const pathname = usePathname()
   const isHome = pathname === '/'
 
@@ -94,6 +96,55 @@ export default function Navbar() {
           </ul>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            {/* Cart Button */}
+            <button
+              onClick={toggleCart}
+              aria-label={`Open shopping cart (${totalCount} items)`}
+              style={{
+                position: 'relative',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '8px',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--color-text-primary)',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
+              </svg>
+              {totalCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-6px',
+                    background: 'linear-gradient(135deg, #7c3aed, #ec4899)',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    minWidth: '20px',
+                    height: '20px',
+                    borderRadius: '999px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px',
+                    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.5)',
+                  }}
+                >
+                  {totalCount}
+                </span>
+              )}
+            </button>
+
             <button
               id="theme-toggle-btn"
               className="theme-toggle"

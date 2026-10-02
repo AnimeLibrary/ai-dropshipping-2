@@ -8,6 +8,8 @@ import ThemeProvider from '@/components/layout/ThemeProvider'
 import AdsTrackingProvider from '@/components/layout/AdsTrackingProvider'
 import Analytics from '@/components/layout/Analytics'
 import SupportChat from '@/components/layout/SupportChat'
+import { CartProvider } from '@/lib/context/CartContext'
+import CartDrawer from '@/components/commerce/CartDrawer'
 import { siteConfig } from '@/lib/config/site'
 
 // Notice: Google fonts disabled temporarily to prevent Next.js build crashes on slow hotspot connections.
@@ -112,7 +114,7 @@ export default function RootLayout({
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 'pk_test_dWx0aW1hdGUtZWdyZXQtMzUuY2xlcmsuYWNjb3VudHMuZGV2JA'}>
       <html lang="en" suppressHydrationWarning>
         <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
           <link rel="icon" href="/favicon.ico" sizes="any" />
           <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
           <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
@@ -127,14 +129,17 @@ export default function RootLayout({
         <body>
           <AdsTrackingProvider>
             <ThemeProvider>
-              <Analytics />
-              <Navbar />
-              <main id="main-content">
-                {children}
-              </main>
-              <StickyCTA />
-              <SupportChat />
-              <Footer />
+              <CartProvider>
+                <Analytics />
+                <Navbar />
+                <main id="main-content">
+                  {children}
+                </main>
+                <CartDrawer />
+                <StickyCTA />
+                <SupportChat />
+                <Footer />
+              </CartProvider>
             </ThemeProvider>
           </AdsTrackingProvider>
         </body>

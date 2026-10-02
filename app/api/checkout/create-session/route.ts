@@ -30,13 +30,187 @@ function firstHttpImage(value?: string | null) {
 
 export async function POST(req: Request) {
   try {
-    const { productId, priceId, referralCode, quantity = 1 } = (await req.json()) as {
+    const body = await req.json()
+    const { productId, priceId, variantId, referralCode, quantity = 1, items } = body as {
       productId?: string
       priceId?: string
+      variantId?: string
       referralCode?: string
       quantity?: number
+      items?: Array<{
+        productId: string
+        variantId?: string
+        vid?: string
+        quantity: number
+        title?: string
+        variantLabel?: string
+      }>
     }
 
+    const referral = cleanReferralCode(referralCode)
+    let referralId = ''
+    let discountAmount = 0
+
+    if (referral) {
+      const existingReferral = await prisma.referral.findUnique({ where: { code: referral } })
+      if (existingReferral) {
+        referralId = existingReferral.id
+      }
+    }
+
+    // ── CASE 1: MULTI-ITEM CART CHECKOUT ──────────────────────
+    if (items && Array.isArray(items) && items.length > 0) {
+      const productIds = Array.from(new Set(items.map(i => i.productId).filter(Boolean)))
+      if (productIds.length === 0) {
+        return NextResponse.json({ error: 'Cart has no valid items' }, { status: 400 })
+      }
+
+      const dbProducts = await prisma.product.findMany({
+        where: { id: { in: productIds } },
+        include: {
+          variants: true,
+          suppliers: true,
+        },
+      })
+
+      const totalCartQuantity = items.reduce((acc, i) => acc + Math.max(1, Math.min(10, Number(i.quantity) || 1)), 0)
+
+      // Quantity break discount across multi-item cart:
+      // 2 units -> 15% OFF, 3+ units -> 25% OFF
+      let quantityDiscountRate = 0
+      if (totalCartQuantity === 2) quantityDiscountRate = 0.15
+      else if (totalCartQuantity >= 3) quantityDiscountRate = 0.25
+
+      const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = []
+      const orderMetaItems: Array<{ productId: string; cjVariantId: string; quantity: number }> = []
+
+      let rawSubtotal = 0
+
+      for (const item of items) {
+        const product = dbProducts.find(p => p.id === item.productId)
+        if (!product || product.validationStatus !== 'approved') continue
+
+        const itemQty = Math.max(1, Math.min(10, Number(item.quantity) || 1))
+
+        // Match variant by variantId, vid, or default
+        const selectedVariant =
+          product.variants.find(v => v.id === item.variantId || v.vid === item.vid || v.stripeVariantPriceId === item.variantId) ||
+          product.variants.find(v => v.isDefault) ||
+          product.variants[0]
+
+        const activePrice = selectedVariant ? Number(selectedVariant.retailPrice) : Number(product.price)
+        if (!activePrice || activePrice < 1) continue
+
+        let unitPrice = activePrice * (1 - quantityDiscountRate)
+        if (referralId) {
+          unitPrice = unitPrice * (1 - REFERRAL_DISCOUNT)
+        }
+        const finalUnitPrice = Math.round(unitPrice * 100) / 100
+
+        rawSubtotal += finalUnitPrice * itemQty
+
+        const variantLabel = selectedVariant && !selectedVariant.isDefault ? ` - ${selectedVariant.label}` : ''
+        const imageUrl = firstHttpImage(selectedVariant?.image || product.heroImage)
+        const supplier = product.suppliers.find((s) => s.isCheapest) || product.suppliers[0]
+        const cjVariantVid = selectedVariant?.vid || product.cjVariantId || ''
+
+        line_items.push({
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${product.title}${variantLabel}`,
+              images: imageUrl ? [imageUrl] : [],
+              description: referralId
+                ? `Special 15% referral discount applied.`
+                : product.shortDescription || 'Vexsen verified essential',
+              metadata: {
+                productId: product.id,
+                variantId: selectedVariant?.id || '',
+                cjVariantId: cjVariantVid,
+                supplierUrl: supplier?.url || '',
+              },
+            },
+            unit_amount: Math.round(finalUnitPrice * 100),
+          },
+          quantity: itemQty,
+        })
+
+        orderMetaItems.push({
+          productId: product.id,
+          cjVariantId: cjVariantVid,
+          quantity: itemQty,
+        })
+      }
+
+      if (line_items.length === 0) {
+        return NextResponse.json({ error: 'No purchasable items found in cart' }, { status: 400 })
+      }
+
+      const isFreeShipping = rawSubtotal >= 60
+
+      const session = await stripe.checkout.sessions.create({
+        line_items,
+        mode: 'payment',
+        shipping_address_collection: {
+          allowed_countries: ['US', 'CA', 'GB', 'AU'],
+        },
+        shipping_options: [
+          ...(isFreeShipping
+            ? [
+                {
+                  shipping_rate_data: {
+                    type: 'fixed_amount' as const,
+                    fixed_amount: { amount: 0, currency: 'usd' },
+                    display_name: 'FREE Standard Tracked & Insured Delivery (Over $60)',
+                    delivery_estimate: {
+                      minimum: { unit: 'business_day' as const, value: 7 },
+                      maximum: { unit: 'business_day' as const, value: 12 },
+                    },
+                  },
+                },
+              ]
+            : [
+                {
+                  shipping_rate_data: {
+                    type: 'fixed_amount' as const,
+                    fixed_amount: { amount: 495, currency: 'usd' },
+                    display_name: 'Standard Tracked & Insured Delivery',
+                    delivery_estimate: {
+                      minimum: { unit: 'business_day' as const, value: 7 },
+                      maximum: { unit: 'business_day' as const, value: 12 },
+                    },
+                  },
+                },
+              ]),
+          {
+            shipping_rate_data: {
+              type: 'fixed_amount' as const,
+              fixed_amount: { amount: 895, currency: 'usd' },
+              display_name: 'Priority Insured & Expedited Dispatch',
+              delivery_estimate: {
+                minimum: { unit: 'business_day' as const, value: 4 },
+                maximum: { unit: 'business_day' as const, value: 8 },
+              },
+            },
+          },
+        ],
+        automatic_tax: { enabled: false },
+        phone_number_collection: { enabled: true },
+        success_url: `${absoluteUrl('/success')}?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: absoluteUrl('/collections'),
+        metadata: {
+          cart_checkout: 'true',
+          cart_items: JSON.stringify(orderMetaItems),
+          referralId,
+          referralCode: referral,
+          totalCartQuantity: String(totalCartQuantity),
+        },
+      })
+
+      return NextResponse.json({ url: session.url })
+    }
+
+    // ── CASE 2: SINGLE PRODUCT DIRECT BUY NOW ───────────────────
     const orderQuantity = Math.max(1, Math.min(10, Number(quantity) || 1))
 
     if (!productId) {
@@ -56,13 +230,16 @@ export async function POST(req: Request) {
     }
 
     const defaultVariant = product.variants.find((variant) => variant.isDefault) || product.variants[0]
-    const selectedVariant = priceId
-      ? product.variants.find((variant) => variant.stripeVariantPriceId === priceId)
+    const selectedVariant = variantId
+      ? product.variants.find((variant) => variant.id === variantId || variant.vid === variantId) || defaultVariant
+      : priceId
+      ? product.variants.find(
+          (variant) =>
+            variant.stripeVariantPriceId === priceId ||
+            variant.id === priceId ||
+            variant.vid === priceId
+        ) || defaultVariant
       : defaultVariant
-
-    if (priceId && !selectedVariant && product.stripePriceId !== priceId) {
-      return NextResponse.json({ error: 'Invalid product variant' }, { status: 400 })
-    }
 
     const activePrice = selectedVariant ? Number(selectedVariant.retailPrice) : Number(product.price)
     const cost = Number(selectedVariant?.supplierPrice || product.supplierPrice || 0)
@@ -71,12 +248,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid pricing model' }, { status: 400 })
     }
 
-    if (cost > 0 && (activePrice - cost) / activePrice < 0.2) {
+    if (cost > 0 && (activePrice - cost) / activePrice < 0.15) {
       return NextResponse.json({ error: 'Price is being updated. Please try again later.' }, { status: 422 })
     }
 
     const supplier = product.suppliers.find((item) => item.isCheapest) || product.suppliers[0]
-    const referral = cleanReferralCode(referralCode)
 
     // Automatic quantity break discount:
     // 2 units -> 15% OFF, 3+ units -> 25% OFF
@@ -85,22 +261,18 @@ export async function POST(req: Request) {
     else if (orderQuantity >= 3) quantityDiscountRate = 0.25
 
     let discountedUnitPrice = activePrice * (1 - quantityDiscountRate)
-
     let finalPrice = Math.round(discountedUnitPrice * 100) / 100
-    let referralId = ''
-    let discountAmount = 0
 
-    if (referral) {
-      const existingReferral = await prisma.referral.findUnique({ where: { code: referral } })
-      if (existingReferral) {
-        discountAmount = Math.round(finalPrice * REFERRAL_DISCOUNT * 100) / 100
-        finalPrice = Math.round((finalPrice - discountAmount) * 100) / 100
-        referralId = existingReferral.id
-      }
+    if (referralId) {
+      discountAmount = Math.round(finalPrice * REFERRAL_DISCOUNT * 100) / 100
+      finalPrice = Math.round((finalPrice - discountAmount) * 100) / 100
     }
 
     const variantLabel = selectedVariant && !selectedVariant.isDefault ? ` - ${selectedVariant.label}` : ''
     const imageUrl = firstHttpImage(selectedVariant?.image || product.heroImage)
+    const cjVariantVid = selectedVariant?.vid || product.cjVariantId || ''
+
+    const isFreeShipping = finalPrice * orderQuantity >= 60
 
     const session = await stripe.checkout.sessions.create({
       line_items: [
@@ -115,6 +287,8 @@ export async function POST(req: Request) {
                 : product.shortDescription || 'Vexsen curated product',
               metadata: {
                 productId: product.id,
+                variantId: selectedVariant?.id || '',
+                cjVariantId: cjVariantVid,
                 supplierUrl: supplier?.url || '',
               },
             },
@@ -128,41 +302,47 @@ export async function POST(req: Request) {
         allowed_countries: ['US', 'CA', 'GB', 'AU'],
       },
       shipping_options: [
+        ...(isFreeShipping
+          ? [
+              {
+                shipping_rate_data: {
+                  type: 'fixed_amount' as const,
+                  fixed_amount: { amount: 0, currency: 'usd' },
+                  display_name: 'FREE Standard Tracked & Insured Delivery (Over $60)',
+                  delivery_estimate: {
+                    minimum: { unit: 'business_day' as const, value: 7 },
+                    maximum: { unit: 'business_day' as const, value: 12 },
+                  },
+                },
+              },
+            ]
+          : [
+              {
+                shipping_rate_data: {
+                  type: 'fixed_amount' as const,
+                  fixed_amount: { amount: 495, currency: 'usd' },
+                  display_name: 'Standard Tracked & Insured Delivery',
+                  delivery_estimate: {
+                    minimum: { unit: 'business_day' as const, value: 7 },
+                    maximum: { unit: 'business_day' as const, value: 12 },
+                  },
+                },
+              },
+            ]),
         {
           shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: {
-              amount: 495, // $4.95 Standard Tracked & Insured
-              currency: 'usd',
-            },
-            display_name: 'Standard Tracked & Insured Delivery',
-            delivery_estimate: {
-              minimum: { unit: 'business_day', value: 7 },
-              maximum: { unit: 'business_day', value: 12 },
-            },
-          },
-        },
-        {
-          shipping_rate_data: {
-            type: 'fixed_amount',
-            fixed_amount: {
-              amount: 895, // $8.95 Priority Expedited
-              currency: 'usd',
-            },
+            type: 'fixed_amount' as const,
+            fixed_amount: { amount: 895, currency: 'usd' },
             display_name: 'Priority Insured & Expedited Dispatch',
             delivery_estimate: {
-              minimum: { unit: 'business_day', value: 4 },
-              maximum: { unit: 'business_day', value: 8 },
+              minimum: { unit: 'business_day' as const, value: 4 },
+              maximum: { unit: 'business_day' as const, value: 8 },
             },
           },
         },
       ],
-      automatic_tax: {
-        enabled: false,
-      },
-      phone_number_collection: {
-        enabled: true,
-      },
+      automatic_tax: { enabled: false },
+      phone_number_collection: { enabled: true },
       success_url: `${absoluteUrl('/success')}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: absoluteUrl(`/products/${product.slug}`),
       metadata: {
@@ -173,7 +353,7 @@ export async function POST(req: Request) {
         referralCode: referral,
         orderQuantity: String(orderQuantity),
         supplier_url: supplier?.url || '',
-        cj_variant_vid: selectedVariant?.vid || product.cjVariantId || '',
+        cj_variant_vid: cjVariantVid,
       },
     })
 
@@ -184,6 +364,6 @@ export async function POST(req: Request) {
     })
   } catch (err: any) {
     console.error('[Stripe Session] Error:', err)
-    return NextResponse.json({ error: 'Checkout failed' }, { status: 500 })
+    return NextResponse.json({ error: err.message || 'Checkout failed' }, { status: 500 })
   }
 }

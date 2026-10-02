@@ -18,12 +18,56 @@ export async function PATCH(
     const numPrice = price !== undefined ? parseFloat(price) : undefined
     const numCompareAt = compareAtPrice !== undefined ? (compareAtPrice ? parseFloat(compareAtPrice) : null) : undefined
 
+    let newDefaultStripePriceId: string | null = null
     if (numPrice !== undefined) {
       // Keep all variants in sync with the new retail price so variants don't show cheap old prices
       await prisma.productVariant.updateMany({
         where: { productId: id },
         data: { retailPrice: numPrice }
       })
+
+      if (process.env.STRIPE_SECRET_KEY) {
+        const prodWithVariants = await prisma.product.findUnique({
+          where: { id },
+          include: { variants: true }
+        })
+
+        if (prodWithVariants?.stripeProductId) {
+          try {
+            const Stripe = (await import('stripe')).default
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' as any })
+            const expectedCents = Math.round(numPrice * 100)
+
+            for (const variant of prodWithVariants.variants) {
+              const oldPriceId = variant.stripeVariantPriceId
+              const newPrice = await stripe.prices.create({
+                product: prodWithVariants.stripeProductId,
+                unit_amount: expectedCents,
+                currency: 'usd',
+                nickname: variant.label,
+                metadata: {
+                  productId: id,
+                  variantId: variant.id,
+                  vid: variant.vid,
+                  label: variant.label,
+                }
+              })
+              if (oldPriceId) {
+                await stripe.prices.update(oldPriceId, { active: false }).catch(() => {})
+              }
+              await prisma.productVariant.update({
+                where: { id: variant.id },
+                data: { stripeVariantPriceId: newPrice.id }
+              })
+              if (variant.isDefault || !newDefaultStripePriceId) {
+                newDefaultStripePriceId = newPrice.id
+              }
+            }
+          } catch (e: any) {
+            console.error('[Admin Price Sync] Failed to sync to Stripe:', e.message)
+          }
+        }
+      }
     }
 
     const updated = await prisma.product.update({
@@ -32,6 +76,7 @@ export async function PATCH(
         ...(title !== undefined && { title }),
         ...(numPrice !== undefined && { price: numPrice }),
         ...(numCompareAt !== undefined && { compareAtPrice: numCompareAt }),
+        ...(newDefaultStripePriceId && { stripePriceId: newDefaultStripePriceId }),
         ...(niche !== undefined && { niche }),
         ...(shortDescription !== undefined && { shortDescription }),
         ...(validationStatus !== undefined && { validationStatus }),

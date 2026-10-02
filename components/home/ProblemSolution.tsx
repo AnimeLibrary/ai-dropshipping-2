@@ -25,8 +25,8 @@ const PROBLEMS = [
 export default function ProblemSolution() {
   return (
     <section
+      className="section"
       style={{
-        padding: 'var(--space-20) 0',
         background: 'var(--color-bg)',
         borderTop: '1px solid var(--color-border)',
         borderBottom: '1px solid var(--color-border)',
@@ -76,8 +76,9 @@ export default function ProblemSolution() {
               {/* LEFT: The Problem */}
               <div style={{
                 background: 'var(--color-bg-secondary)',
-                padding: 'var(--space-8)',
+                padding: 'var(--space-6)',
                 borderRight: '1px solid var(--color-border)',
+                borderBottom: '1px solid var(--color-border)',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
                   <span style={{ fontSize: '1.75rem' }}>{item.emoji}</span>
@@ -94,7 +95,7 @@ export default function ProblemSolution() {
               {/* RIGHT: The Vexsen Fix */}
               <div style={{
                 background: 'var(--color-bg)',
-                padding: 'var(--space-8)',
+                padding: 'var(--space-6)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 'var(--space-4)',

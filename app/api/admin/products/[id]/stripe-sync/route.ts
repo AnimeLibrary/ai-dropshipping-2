@@ -23,14 +23,6 @@ export async function POST(
   })
   if (!product) return NextResponse.json({ error: 'Product not found' }, { status: 404 })
 
-  if (product.stripePriceId || product.stripeProductId) {
-    return NextResponse.json({
-      message: 'Already synced to Stripe',
-      stripePriceId: product.stripePriceId,
-      stripeProductId: product.stripeProductId,
-    })
-  }
-
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-04-10' as any })
 
   // Parse gallery images for Stripe (max 8)
@@ -44,25 +36,37 @@ export async function POST(
     }
   } catch {}
 
-  const stripeProd = await stripe.products.create({
-    name: product.title,
-    description: product.shortDescription || `A targeted solution for ${product.niche.replace(/-/g, ' ')}`,
-    images: imageUrls,
-    metadata: {
-      productId: product.id,
-      slug: product.slug,
-      niche: product.niche,
-      cjProductId: product.cjProductId || '',
-    },
-  })
+  let stripeProductId = product.stripeProductId
+  if (stripeProductId) {
+    try {
+      await stripe.products.retrieve(stripeProductId)
+    } catch {
+      stripeProductId = null
+    }
+  }
 
-  let defaultStripePriceId = null
+  if (!stripeProductId) {
+    const stripeProd = await stripe.products.create({
+      name: product.title,
+      description: product.shortDescription || `A targeted solution for ${product.niche.replace(/-/g, ' ')}`,
+      images: imageUrls,
+      metadata: {
+        productId: product.id,
+        slug: product.slug,
+        niche: product.niche,
+        cjProductId: product.cjProductId || '',
+      },
+    })
+    stripeProductId = stripeProd.id
+  }
+
+  let defaultStripePriceId: string | null = null
 
   if (product.variants.length > 0) {
     for (const variant of product.variants) {
       try {
         const variantPrice = await stripe.prices.create({
-          product: stripeProd.id,
+          product: stripeProductId,
           unit_amount: Math.round(variant.retailPrice * 100),
           currency: 'usd',
           nickname: variant.label,
@@ -92,7 +96,7 @@ export async function POST(
   } else {
     // Fallback: No variants
     const singlePrice = await stripe.prices.create({
-      product: stripeProd.id,
+      product: stripeProductId,
       unit_amount: Math.round(product.price * 100),
       currency: 'usd',
     })
@@ -102,7 +106,7 @@ export async function POST(
   await prisma.product.update({
     where: { id: product.id },
     data: {
-      stripeProductId: stripeProd.id,
+      stripeProductId: stripeProductId,
       stripePriceId: defaultStripePriceId,
     },
   })
@@ -112,14 +116,14 @@ export async function POST(
       level: 'info',
       source: 'admin:stripe-sync',
       message: `Manually synced "${product.title}" to Stripe`,
-      meta: JSON.stringify({ productId: product.id, stripeProductId: stripeProd.id, stripePriceId: defaultStripePriceId }),
+      meta: JSON.stringify({ productId: product.id, stripeProductId: stripeProductId, stripePriceId: defaultStripePriceId }),
     },
   })
 
   return NextResponse.json({
     success: true,
-    stripeProductId: stripeProd.id,
+    stripeProductId: stripeProductId,
     stripePriceId: defaultStripePriceId,
-    dashboardUrl: `https://dashboard.stripe.com/products/${stripeProd.id}`,
+    dashboardUrl: `https://dashboard.stripe.com/products/${stripeProductId}`,
   })
 }

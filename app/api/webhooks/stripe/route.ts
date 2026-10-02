@@ -68,10 +68,10 @@ export async function POST(req: Request) {
               const internalId = stripeProduct?.metadata?.productId || 'unknown'
               
               // Look up CJ variant ID for auto-fulfillment
-              // Priority 1: Exact Variant VID from Checkout Session metadata
-              let cjVariantId: string | null = session.metadata?.cj_variant_vid || null
+              // Priority 1: Exact Variant VID from individual product line-item metadata
+              let cjVariantId: string | null = stripeProduct?.metadata?.cjVariantId || session.metadata?.cj_variant_vid || null
 
-              // Priority 2: Fallback to DB product default if not in session metadata
+              // Priority 2: Fallback to DB product default if not in metadata
               if (!cjVariantId && internalId !== 'unknown') {
                 const dbProduct = await prisma.product.findUnique({
                   where: { id: internalId },

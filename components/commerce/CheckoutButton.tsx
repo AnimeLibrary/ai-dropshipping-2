@@ -12,6 +12,7 @@ interface CheckoutButtonProps {
   variant?: 'primary' | 'outline'
   className?: string
   priceId?: string
+  variantId?: string
   productName?: string
 }
 
@@ -25,6 +26,7 @@ export default function CheckoutButton({
   variant = 'primary',
   className = '',
   priceId,
+  variantId,
   productName,
 }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false)
@@ -63,6 +65,7 @@ export default function CheckoutButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId,
+          variantId,
           priceId,
           quantity,
           referralCode: promoStatus === 'valid' ? promoCode.trim().toUpperCase() : undefined,

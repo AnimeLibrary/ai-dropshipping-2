@@ -448,25 +448,92 @@ export class CJService {
     const rawPrice = String(p.sellPrice || p.productPrice || 0)
     const supplierPrice = parseFloat(rawPrice.split('-')[0]) || 0
 
+    const productTitle = p.productNameEn || p.productName || 'Product'
     const rawVariants: any[] = p.variants || p.productVariants || []
-    const variants: CJVariant[] = rawVariants.map((v: any) => {
-      // CJ uses variantProperty like "Color:Red;Size:XL"
+    const variants: CJVariant[] = rawVariants.map((v: any, idx: number) => {
+      // 1. Parse variantProperty if JSON or key:value format
       const props: Record<string, string> = {}
-      const propStr: string = v.variantProperty || v.variantProperties || ''
-      propStr.split(';').forEach((part: string) => {
-        const [k, val] = part.split(':')
-        if (k && val) props[k.trim().toLowerCase()] = val.trim()
-      })
-      const labelParts = [props['color'], props['size']].filter(Boolean)
+      const rawProp = v.variantProperty || v.variantProperties || ''
+      if (typeof rawProp === 'string' && (rawProp.startsWith('[') || rawProp.startsWith('{'))) {
+        try {
+          const parsed = JSON.parse(rawProp)
+          if (Array.isArray(parsed)) {
+            parsed.forEach((item: any) => {
+              if (item?.name && item?.value) {
+                props[item.name.toLowerCase().trim()] = String(item.value).trim()
+              }
+            })
+          }
+        } catch {}
+      } else if (typeof rawProp === 'string' && rawProp.includes(':')) {
+        rawProp.split(';').forEach((part: string) => {
+          const [k, val] = part.split(':')
+          if (k && val) props[k.trim().toLowerCase()] = val.trim()
+        })
+      }
+
+      let color = props['color'] || props['colour'] || null
+      let size = props['size'] || props['specification'] || props['spec'] || null
+
+      const key: string = (v.variantKey || '').trim()
+      const nameEn: string = (v.variantNameEn || v.variantName || '').trim()
+
+      // 2. Extract label from variantKey or stripped variantNameEn
+      let rawLabel = key
+      if (!rawLabel && nameEn) {
+        const stripped = nameEn.replace(new RegExp(`^${productTitle}`, 'i'), '').trim()
+        rawLabel = stripped || nameEn
+      }
+
+      if (!rawLabel) {
+        const parts = [color, size].filter(Boolean)
+        rawLabel = parts.length > 0 ? parts.join(' / ') : `Option ${idx + 1}`
+      }
+
+      // Clean up common CJ prefixes like "1PCS-"
+      let cleanLabel = rawLabel
+        .replace(/^1PCS-/i, '')
+        .replace(/^1PCS\s+/i, '')
+        .trim()
+
+      // Format cosmetic shades or sets nicely
+      if (/^\d+$/.test(cleanLabel)) {
+        cleanLabel = `Shade ${cleanLabel}`
+      } else if (/^Color\s*code\s*(\d+)/i.test(cleanLabel)) {
+        const num = cleanLabel.match(/(\d+)/)?.[1]
+        cleanLabel = `Shade ${num}`
+      }
+
+      // If color was null, try extracting from label
+      if (!color) {
+        const knownColors = ['black', 'white', 'red', 'blue', 'green', 'pink', 'purple', 'brown', 'bare brown', 'red brown', 'cocoa', 'rose', 'peach', 'nude', 'coral', 'berry', 'orange', 'yellow', 'grey', 'gray']
+        for (const c of knownColors) {
+          if (cleanLabel.toLowerCase().includes(c)) {
+            color = c.split(' ').map((w: string) => w[0].toUpperCase() + w.slice(1)).join(' ')
+            break
+          }
+        }
+      }
+
+      // If size was null, try extracting volume/size from label
+      if (!size) {
+        const sizeMatch = cleanLabel.match(/(\d+\s*(?:ml|g|oz|pcs|pc|set))/i)
+        if (sizeMatch) {
+          size = sizeMatch[1].toUpperCase()
+        }
+      }
+
+      const variantImg = v.variantImage || v.image || p.productImage || ''
+
       return {
         vid: String(v.vid || v.variantId || ''),
         sku: String(v.variantSku || v.sku || ''),
-        label: labelParts.length > 0 ? labelParts.join(' / ') : 'Default',
-        color: props['color'],
-        size: props['size'],
+        label: cleanLabel || 'Default',
+        color: color || undefined,
+        size: size || undefined,
         supplierPrice: parseFloat(String(v.variantSellPrice || v.sellPrice || supplierPrice)) || supplierPrice,
         stock: Number(v.variantStock ?? v.productStock ?? 0),
-        image: v.variantImage || p.productImage || '',
+        image: variantImg,
       }
     })
 
