@@ -2,9 +2,26 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'About Vexsen — Quality Standards & Guarantees',
+  title: 'About Vexsen — Our Quality Standards & 30-Day Guarantee',
   description:
-    'Discover why Vexsen was founded: high-performance beauty and everyday essentials rigorously tested for real durability and longwear performance. 30-day risk-free trial.',
+    'Learn why Vexsen was founded: beauty essentials rigorously tested for real durability. Every product passes a 7-point verification before we list it. 30-day risk-free guarantee.',
+  keywords: [
+    'about vexsen', 'vexsen brand', 'vexsen quality standards',
+    'beauty brand guarantee', 'vexsen 30 day guarantee', 'vexsen mission',
+  ],
+  alternates: { canonical: '/about' },
+  openGraph: {
+    type: 'website',
+    url: '/about',
+    title: 'About Vexsen — Our Quality Standards & 30-Day Guarantee',
+    description: 'Beauty essentials rigorously tested for real durability. 30-day risk-free guarantee.',
+    siteName: 'Vexsen® Official Store',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'About Vexsen — Quality Standards & 30-Day Guarantee',
+    description: 'Beauty essentials rigorously tested for real durability. 30-day risk-free guarantee.',
+  },
 }
 
 export default function AboutPage() {

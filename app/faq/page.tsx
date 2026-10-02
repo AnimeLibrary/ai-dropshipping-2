@@ -2,8 +2,21 @@ import type { Metadata } from 'next'
 import FaqSection from '@/components/home/FaqSection'
 
 export const metadata: Metadata = {
-  title: 'FAQ | Vexsen',
-  description: 'Common questions about shipping, returns, and how Vexsen curates products.',
+  title: 'Frequently Asked Questions | Vexsen Official Store',
+  description:
+    'Answers to the most common Vexsen questions: shipping times, return policy, order tracking, product ingredients, and more. Get help fast.',
+  keywords: [
+    'vexsen faq', 'vexsen shipping', 'vexsen returns', 'how long does vexsen ship',
+    'vexsen return policy', 'vexsen order tracking',
+  ],
+  alternates: { canonical: '/faq' },
+  openGraph: {
+    type: 'website',
+    url: '/faq',
+    title: 'Frequently Asked Questions | Vexsen',
+    description: 'Get answers about Vexsen shipping, returns, order tracking, and products.',
+    siteName: 'Vexsen® Official Store',
+  },
 }
 
 export default function FaqPage() {

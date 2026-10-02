@@ -2,13 +2,23 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { prisma } from '@/lib/db/prisma'
 import CollectionsClient from './CollectionsClient'
+import { SchemaMarkup, collectionPageSchema } from '@/lib/seo/schema'
 
 export const metadata: Metadata = {
-  title: 'Shop All Products | Vexsen',
+  title: 'Shop All Beauty Products | Vexsen Official Store',
   description:
-    'Browse every curated product in the Vexsen catalog. Filtered by niche, sorted by trending. Every item is verified before it ships.',
-  alternates: {
-    canonical: '/collections',
+    'Browse every curated Vexsen product. Waterproof peel-off lip stains, hydrating juicy lip oils, and beauty essentials — verified, inspected, and insured shipping.',
+  keywords: [
+    'vexsen store', 'shop all beauty products', 'peel off lip stain', 'juicy lip oil',
+    'waterproof lip color', 'transfer proof lip tint', 'vexsen collections',
+  ],
+  alternates: { canonical: '/collections' },
+  openGraph: {
+    type: 'website',
+    url: '/collections',
+    title: 'Shop All Beauty Products | Vexsen',
+    description: 'Browse every curated Vexsen beauty product. Verified, inspected, and insured shipping.',
+    siteName: 'Vexsen® Official Store',
   },
 }
 
@@ -34,8 +44,11 @@ export default async function CollectionsPage() {
   }))
 
   return (
-    <Suspense fallback={<div style={{ paddingTop: 'var(--nav-height)', minHeight: '100vh' }}>Loading collections...</div>}>
-      <CollectionsClient products={normalized} />
-    </Suspense>
+    <>
+      <SchemaMarkup schema={collectionPageSchema(normalized)} />
+      <Suspense fallback={<div style={{ paddingTop: 'var(--nav-height)', minHeight: '100vh' }}>Loading collections...</div>}>
+        <CollectionsClient products={normalized} />
+      </Suspense>
+    </>
   )
 }

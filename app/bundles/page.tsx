@@ -1,19 +1,41 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-
-export const metadata: Metadata = {
-  title: 'Fix Kits & Bundles | Vexsen',
-  description: 'Complete systemic fixes bundled for a lower price.',
-}
-
+import { SchemaMarkup, breadcrumbSchema } from '@/lib/seo/schema'
 import { getApprovedBundles } from '@/lib/data/bundles'
 import { getProductBySlug } from '@/lib/data/products'
+
+export const metadata: Metadata = {
+  title: 'Fix Kits & Bundles | Vexsen Official Store',
+  description:
+    'Save on curated beauty fix kits and product bundles from Vexsen. Complete systemic solutions at special bundle discounts with free insured shipping.',
+  keywords: [
+    'vexsen bundles',
+    'beauty fix kits',
+    'lip stain bundles',
+    'skincare routine bundle',
+    'vexsen savings',
+  ],
+  alternates: {
+    canonical: '/bundles',
+  },
+  openGraph: {
+    type: 'website',
+    url: '/bundles',
+    title: 'Fix Kits & Bundles | Vexsen Official Store',
+    description: 'Save on curated beauty fix kits and product bundles from Vexsen. Complete systemic solutions at bundle pricing.',
+    siteName: 'Vexsen® Official Store',
+  },
+}
 
 export default function BundlesPage() {
   const bundles = getApprovedBundles()
 
   return (
     <>
+      <SchemaMarkup schema={breadcrumbSchema([
+        { name: 'Home', href: '/' },
+        { name: 'Bundles & Fix Kits', href: '/bundles' },
+      ])} />
       <div 
         style={{ 
           background: 'linear-gradient(135deg, var(--color-bg-secondary) 0%, rgba(124,58,237,0.06) 100%)',

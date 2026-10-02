@@ -15,12 +15,55 @@ export const dynamic = 'force-dynamic'
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const product = await prisma.product.findUnique({ where: { slug } })
-  if (!product) return {}
+  if (!product) return { robots: { index: false, follow: false } }
+
+  const isUnavailable = product.validationStatus === 'archived'
+
+  const heroImage = (() => {
+    try {
+      if (typeof product.heroImage === 'string' && product.heroImage.startsWith('[')) {
+        const arr = JSON.parse(product.heroImage)
+        if (Array.isArray(arr) && arr.length > 0) return arr[0]
+      }
+    } catch {}
+    return product.heroImage || null
+  })()
+
+  const nicheLabel = (product.niche || 'beauty').replace(/-/g, ' ')
+  const description = product.shortDescription ||
+    `Shop ${product.title} — ${nicheLabel} solution from Vexsen. Free shipping on orders $60+. 30-day guarantee.`
+
   return {
     title: `${product.title} | Vexsen`,
-    description: product.shortDescription || `Discover the solution: ${product.title}`,
+    description,
+    keywords: [
+      product.title,
+      `${product.title} buy`,
+      `${product.title} review`,
+      nicheLabel,
+      `${nicheLabel} solution`,
+      'vexsen',
+      'vexsen store',
+    ],
     alternates: {
       canonical: `/products/${slug}`,
+    },
+    robots: isUnavailable
+      ? { index: false, follow: false }
+      : { index: true, follow: true, 'max-image-preview': 'large' as const },
+    openGraph: {
+      type: 'website',
+      url: `/products/${slug}`,
+      title: `${product.title} | Vexsen`,
+      description,
+      siteName: 'Vexsen® Official Store',
+      ...(heroImage ? { images: [{ url: heroImage, width: 1200, height: 630, alt: product.title }] } : {}),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.title} | Vexsen`,
+      description,
+      ...(heroImage ? { images: [heroImage] } : {}),
     },
   }
 }
@@ -113,7 +156,7 @@ export default async function ProductPage({ params }: Props) {
   return (
     <>
       {/* ── Structured Data ── */}
-      <SchemaMarkup schema={productSchema(rawProduct as any)} />
+      <SchemaMarkup schema={productSchema(rawProduct as any, dbReviews.map(r => ({ author: r.authorName || 'Customer', rating: r.rating, body: r.body, createdAt: r.createdAt })))} />
       <SchemaMarkup schema={breadcrumbSchema(breadcrumbs)} />
       <SchemaMarkup schema={faqSchema([
         { question: 'When will my order ship?', answer: 'Orders process and ship within 24-72 hours. You will receive a tracking number the moment your package leaves our fulfillment center.' },
