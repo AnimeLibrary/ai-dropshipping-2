@@ -1,20 +1,25 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
 const isProtectedRoute = createRouteMatcher(['/account(.*)', '/admin(.*)', '/api/admin(.*)'])
 
 export default clerkMiddleware(
   async (auth, request) => {
+    // In local development, allow direct access so the admin dashboard & tools work smoothly
+    if (process.env.NODE_ENV === 'development' && (
+      request.nextUrl.pathname.startsWith('/admin') ||
+      request.nextUrl.pathname.startsWith('/api/admin')
+    )) {
+      return NextResponse.next()
+    }
+
     if (isProtectedRoute(request)) {
       try {
-        const session = await auth()
-        if (!session.userId) {
-          return session.redirectToSignIn({ returnBackUrl: request.url })
-        }
+        await auth.protect()
       } catch {
-        // Fallback redirect if edge session retrieval encounters missing environment keys on Vercel
         const signInUrl = new URL('/account', request.url)
         signInUrl.searchParams.set('redirect_url', request.url)
-        return Response.redirect(signInUrl)
+        return NextResponse.redirect(signInUrl)
       }
     }
   },
