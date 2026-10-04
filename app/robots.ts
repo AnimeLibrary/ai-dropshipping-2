@@ -18,18 +18,12 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
       {
-        // Google: explicitly allow product images and pages for rich results
-        userAgent: 'Googlebot',
-        allow: [
-          '/products/',
-          '/collections',
-          '/guides/',
-          '/problems/',
-          '/solutions/',
-          '/bundles',
-        ],
+        // Google & Googlebot-Image: allow full indexing of homepage, logo/favicons, product pages and rich media
+        userAgent: ['Googlebot', 'Googlebot-Image', 'Google-InspectionTool'],
+        allow: '/',
         disallow: [
           '/admin',
+          '/admin/',
           '/api/',
           '/account',
           '/success',

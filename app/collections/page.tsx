@@ -5,19 +5,28 @@ import CollectionsClient from './CollectionsClient'
 import { SchemaMarkup, collectionPageSchema } from '@/lib/seo/schema'
 
 export const metadata: Metadata = {
-  title: 'Shop All Beauty Products | Vexsen Official Store',
+  title: 'Waterproof Lip Stains & Juicy Lip Oils for Sale | Vexsen®',
   description:
-    'Browse every curated Vexsen product. Waterproof peel-off lip stains, hydrating juicy lip oils, and beauty essentials — verified, inspected, and insured shipping.',
+    'Shop waterproof peel-off lip stains, 24-hour transfer-proof lip tints, and hydrating juicy lip oils for sale online. Smudge-proof beauty essentials with insured express delivery.',
   keywords: [
-    'vexsen store', 'shop all beauty products', 'peel off lip stain', 'juicy lip oil',
-    'waterproof lip color', 'transfer proof lip tint', 'vexsen collections',
+    'lip stain for sale',
+    'lipstain for sell',
+    'waterproof lip stain for sale',
+    'peel off lip stain for sale',
+    'buy lip stain online',
+    'long lasting lip tint for sale',
+    'juicy lip oil on sale',
+    'transfer proof lip stain',
+    'vexsen store',
+    'vexsen beauty',
   ],
   alternates: { canonical: '/collections' },
   openGraph: {
     type: 'website',
     url: '/collections',
-    title: 'Shop All Beauty Products | Vexsen',
-    description: 'Browse every curated Vexsen beauty product. Verified, inspected, and insured shipping.',
+    title: 'Waterproof Lip Stains & Juicy Lip Oils for Sale | Vexsen®',
+    description:
+      'Shop waterproof peel-off lip stains, 24h transfer-proof lip tints, and hydrating juicy lip oils on sale. Verified, smudge-proof beauty essentials.',
     siteName: 'Vexsen® Official Store',
   },
 }

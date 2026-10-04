@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import LiveTrafficTrackerWidget from '@/components/admin/LiveTrafficTrackerWidget'
+import MarketingHubPanel from '@/components/admin/MarketingHubPanel'
 
 // ── Types ────────────────────────────────────────────────────
 interface ProductVariant {
@@ -70,7 +72,7 @@ interface Props {
   seoClusters: SeoCluster[]
 }
 
-type Panel = 'sourcing' | 'products' | 'orders' | 'safety' | 'health' | 'logs' | 'flow' | 'referrals' | 'reviews' | 'seo'
+type Panel = 'sourcing' | 'products' | 'orders' | 'safety' | 'health' | 'logs' | 'flow' | 'referrals' | 'reviews' | 'seo' | 'marketing'
 type ProductsSubTab = 'pipeline' | 'database'
 
 // ── Sub-components ───────────────────────────────────────────
@@ -87,7 +89,7 @@ function Tag({ children, color }: { children: React.ReactNode; color: string }) 
 }
 
 const PANEL_COLOR: Record<string, string> = {
-  sourcing:'#3b82f6', products:'#7c3aed', orders:'#22c55e', safety:'#f59e0b', health:'#60a5fa', logs:'#f472b6', flow:'#34d399', referrals:'#e8823a', reviews:'#ec4899', seo:'#14b8a6'
+  sourcing:'#3b82f6', products:'#7c3aed', orders:'#22c55e', safety:'#f59e0b', health:'#60a5fa', logs:'#f472b6', flow:'#34d399', referrals:'#e8823a', reviews:'#ec4899', seo:'#14b8a6', marketing:'#f43f5e'
 }
 
 // ── Main Dashboard ───────────────────────────────────────────
@@ -666,16 +668,17 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
 
   // ── Sidebar ─────────────────────────────────────────────────
   const navItems: { id: Panel; label: string; badge?: number }[] = [
-    { id: 'sourcing', label: '⚡ CJ Sourcing' },
-    { id: 'products', label: '📦 Products',    badge: pending.length },
-    { id: 'orders',   label: '🛒 Orders',      badge: orders.filter(o=>o.status==='processing').length },
-    { id: 'safety',   label: '🛡️ Safety Valve', badge: archived.length },
-    { id: 'health',   label: '💚 System Health' },
-    { id: 'logs',     label: '📋 Logs',         badge: logs.filter(l=>l.level==='error').length || undefined },
-    { id: 'reviews',  label: '💬 UGC Reviews',  badge: reviews.length || undefined },
-    { id: 'referrals', label: '🎁 Referrals',   badge: referrals.filter(r=>r.uses.some(u=>u.status==='pending')).length || undefined },
-    { id: 'seo',      label: '📈 SEO Fleet',    badge: seoClusters.filter(c => !c.hasContent).length || undefined },
-    { id: 'flow',     label: '🔀 Data Flow' },
+    { id: 'sourcing',   label: '⚡ CJ Sourcing' },
+    { id: 'products',   label: '📦 Products',     badge: pending.length },
+    { id: 'orders',     label: '🛒 Orders',       badge: orders.filter(o=>o.status==='processing').length },
+    { id: 'marketing',  label: '🔥 Marketing Hub' },
+    { id: 'safety',     label: '🛡️ Safety Valve', badge: archived.length },
+    { id: 'health',     label: '💚 System Health' },
+    { id: 'logs',       label: '📋 Logs',          badge: logs.filter(l=>l.level==='error').length || undefined },
+    { id: 'reviews',    label: '💬 UGC Reviews',   badge: reviews.length || undefined },
+    { id: 'referrals',  label: '🎁 Referrals',    badge: referrals.filter(r=>r.uses.some(u=>u.status==='pending')).length || undefined },
+    { id: 'seo',        label: '📈 SEO Fleet',     badge: seoClusters.filter(c => !c.hasContent).length || undefined },
+    { id: 'flow',       label: '🔀 Data Flow' },
   ]
 
   // ── Shared styles ────────────────────────────────────────────
@@ -740,6 +743,14 @@ export default function AdminDashboardClient({ pendingProducts, approvedProducts
 
       {/* ── Main Panel ── */}
       <div style={{ flex:1, overflow:'auto', padding:28, marginRight: isChatOpen ? 480 : 0, transition:'margin-right 0.3s ease' }}>
+
+        {/* ── REAL-TIME TRAFFIC & 3-HOUR VISITOR TRACKER ── */}
+        <LiveTrafficTrackerWidget />
+
+        {/* ── MARKETING HUB ── */}
+        {panel === 'marketing' && (
+          <MarketingHubPanel card={card} label={label} showToast={showToast} setLoadingId={setLoadingId} loadingId={loadingId} />
+        )}
 
         {/* ── CJ SOURCING PANEL (DIRECT CONTROL) ── */}
         {panel === 'sourcing' && (

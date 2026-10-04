@@ -218,3 +218,33 @@ model SiteSetting {
 
   @@map("site_settings")
 }
+
+model VisitorSession {
+  id          String     @id @default(cuid())
+  visitorId   String     @unique
+  currentPath String     @default("/")
+  referrer    String?
+  userAgent   String?
+  device      String?
+  pageViews   Int        @default(1)
+  startedAt   DateTime   @default(now())
+  lastSeenAt  DateTime   @default(now())
+  views       PageView[]
+
+  @@index([lastSeenAt])
+  @@index([startedAt])
+}
+
+model PageView {
+  id         String          @id @default(cuid())
+  visitorId  String
+  session    VisitorSession? @relation(fields: [visitorId], references: [visitorId], onDelete: Cascade)
+  path       String
+  referrer   String?
+  createdAt  DateTime        @default(now())
+
+  @@index([createdAt])
+  @@index([visitorId])
+  @@index([path])
+}
+

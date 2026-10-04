@@ -492,12 +492,12 @@ export default function ProductBuyBox({ product, variants }: Props) {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(125px, 1fr))',
-                  gap: 8,
-                  maxHeight: '260px',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))',
+                  gap: 10,
+                  maxHeight: '320px',
                   overflowY: 'auto',
-                  paddingRight: '4px',
-                  paddingBottom: '4px',
+                  paddingRight: '6px',
+                  paddingBottom: '6px',
                   scrollbarWidth: 'thin',
                 }}
               >
@@ -511,15 +511,15 @@ export default function ProductBuyBox({ product, variants }: Props) {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 8,
+                        gap: 10,
                         padding: '8px 10px',
-                        borderRadius: 'var(--radius-md)',
-                        border: isSelected ? '2px solid var(--color-accent)' : '1px solid var(--color-border)',
-                        background: isSelected ? 'rgba(124,58,237,0.18)' : 'var(--color-bg-secondary)',
+                        borderRadius: '10px',
+                        border: isSelected ? '2px solid var(--color-accent)' : '1px solid rgba(255,255,255,0.08)',
+                        background: isSelected ? 'rgba(124,58,237,0.18)' : 'rgba(255,255,255,0.03)',
                         cursor: 'pointer',
                         textAlign: 'left',
-                        transition: 'all 0.15s ease',
-                        boxShadow: isSelected ? '0 0 12px rgba(124,58,237,0.35)' : 'none',
+                        transition: 'all 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                        boxShadow: isSelected ? '0 0 14px rgba(124,58,237,0.35)' : 'none',
                         position: 'relative',
                       }}
                     >
@@ -528,25 +528,26 @@ export default function ProductBuyBox({ product, variants }: Props) {
                           src={v.image}
                           alt={v.label}
                           style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 6,
+                            width: 44,
+                            height: 44,
+                            borderRadius: 8,
                             objectFit: 'cover',
                             flexShrink: 0,
-                            border: isSelected ? '1px solid var(--color-accent)' : '1px solid rgba(255,255,255,0.1)'
+                            border: isSelected ? '1.5px solid var(--color-accent)' : '1px solid rgba(255,255,255,0.12)',
+                            boxShadow: isSelected ? '0 2px 8px rgba(124,58,237,0.3)' : '0 2px 4px rgba(0,0,0,0.2)',
                           }}
                         />
                       ) : (
                         <div
                           style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 6,
+                            width: 44,
+                            height: 44,
+                            borderRadius: 8,
                             background: isSelected ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.06)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: '12px',
+                            fontSize: '14px',
                             fontWeight: 800,
                             color: isSelected ? 'var(--color-accent)' : 'var(--color-text-muted)',
                             flexShrink: 0,
@@ -564,22 +565,18 @@ export default function ProductBuyBox({ product, variants }: Props) {
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            letterSpacing: '-0.01em',
                           }}
+                          title={v.label}
                         >
                           {v.label}
                         </div>
-                        {v.retailPrice !== basePrice ? (
-                          <div style={{ fontSize: '11px', color: isSelected ? 'var(--color-accent)' : 'var(--color-text-muted)', fontWeight: 700 }}>
-                            ${v.retailPrice.toFixed(2)}
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                            ${v.retailPrice.toFixed(2)}
-                          </div>
-                        )}
+                        <div style={{ fontSize: '11px', color: isSelected ? 'var(--color-accent)' : 'var(--color-text-muted)', fontWeight: isSelected ? 800 : 600, marginTop: 2 }}>
+                          ${v.retailPrice.toFixed(2)}
+                        </div>
                       </div>
                       {isSelected && (
-                        <span style={{ fontSize: '11px', color: 'var(--color-accent)', fontWeight: 900 }}>
+                        <span style={{ fontSize: '12px', color: 'var(--color-accent)', fontWeight: 900, marginLeft: 2 }}>
                           ✓
                         </span>
                       )}

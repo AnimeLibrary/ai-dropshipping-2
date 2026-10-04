@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { prisma } from '@/lib/db/prisma'
+import { siteConfig } from '@/lib/config/site'
 import { SchemaMarkup, productSchema, breadcrumbSchema, faqSchema } from '@/lib/seo/schema'
 import ProductGallery from '@/components/commerce/ProductGallery'
 import ReviewForm from '@/components/commerce/ReviewForm'
@@ -29,41 +30,104 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return product.heroImage || null
   })()
 
+  // Resolve all gallery images for og:image carousel
+  const allImages: string[] = (() => {
+    try {
+      if (typeof product.heroImage === 'string' && product.heroImage.startsWith('[')) {
+        const arr = JSON.parse(product.heroImage)
+        if (Array.isArray(arr) && arr.length > 0) return arr.slice(0, 4)
+      }
+    } catch {}
+    return heroImage ? [heroImage] : []
+  })()
+
   const nicheLabel = (product.niche || 'beauty').replace(/-/g, ' ')
   const description = product.shortDescription ||
     `Shop ${product.title} — ${nicheLabel} solution from Vexsen. Free shipping on orders $60+. 30-day guarantee.`
 
+  const priceFormatted = Number(product.price).toFixed(2)
+  const canonicalUrl = `${siteConfig.url}/products/${slug}`
+  const availability = isUnavailable ? 'out of stock' : 'in stock'
+
   return {
-    title: `${product.title} | Vexsen`,
+    title: `${product.title} — On Sale | Vexsen® Official Store`,
     description,
     keywords: [
       product.title,
+      `${product.title} for sale`,
       `${product.title} buy`,
       `${product.title} review`,
+      `buy ${product.title} online`,
+      'lip stain for sale',
+      'lipstain for sell',
+      'waterproof lip stain for sale',
+      'peel off lip stain for sale',
+      'lip tint on sale',
+      'buy lip stain online',
+      `${product.title} before and after`,
+      `does ${product.title} work`,
+      `best ${nicheLabel}`,
+      `${nicheLabel} that lasts all day`,
+      `transfer proof ${nicheLabel}`,
+      `waterproof ${nicheLabel}`,
+      `${nicheLabel} tiktok`,
+      `${nicheLabel} viral`,
       nicheLabel,
       `${nicheLabel} solution`,
       'vexsen',
       'vexsen store',
+      'vexsen beauty',
+      'peel off lip stain',
     ],
     alternates: {
-      canonical: `/products/${slug}`,
+      canonical: canonicalUrl,
     },
     robots: isUnavailable
       ? { index: false, follow: false }
       : { index: true, follow: true, 'max-image-preview': 'large' as const },
     openGraph: {
+      // Next.js Metadata API only supports 'website' | 'article' etc as OG type string
+      // The og:type=product tag is injected via `other` below for Google Shopping / TikTok Shop
       type: 'website',
-      url: `/products/${slug}`,
-      title: `${product.title} | Vexsen`,
+      url: canonicalUrl,
+      title: `${product.title} | Vexsen® Official Store`,
       description,
       siteName: 'Vexsen® Official Store',
-      ...(heroImage ? { images: [{ url: heroImage, width: 1200, height: 630, alt: product.title }] } : {}),
+      locale: 'en_US',
+      images: allImages.length > 0
+        ? allImages.map((img, i) => ({
+            url: img,
+            width: 1200,
+            height: 1200,
+            alt: i === 0 ? product.title : `${product.title} — view ${i + 1}`,
+          }))
+        : [],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${product.title} | Vexsen`,
+      title: `${product.title} | Vexsen® Official Store`,
       description,
       ...(heroImage ? { images: [heroImage] } : {}),
+    },
+    // ── Open Graph Commerce Tags ──────────────────────────────────────────────
+    // Parsed by: Google Shopping (free listings), TikTok Shop, Pinterest Shopping,
+    // Facebook Shops, Bing Shopping, and social link previews.
+    other: {
+      // Override OG type to 'product' for shopping crawlers
+      'og:type': 'product',
+      // Pricing — required for free Google Shopping listings
+      'og:price:amount': priceFormatted,
+      'og:price:currency': 'USD',
+      // Availability signal
+      'og:availability': availability,
+      // Condition — required by Google Merchant Center
+      'og:condition': 'new',
+      // Brand signal
+      'og:brand': 'Vexsen',
+      // Product-specific identifier signals
+      'og:product:category': nicheLabel,
+      // Pinterest Rich Pin compatibility
+      'og:see_also': canonicalUrl,
     },
   }
 }
